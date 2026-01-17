@@ -2,6 +2,7 @@
 Модели данных для вопросов, тестов, пользователей.
 Использует Pydantic для валидации JSON из файлов вопросов.
 """
+import asyncio
 from dataclasses import dataclass
 from typing import List, Set, Optional
 from enum import Enum
