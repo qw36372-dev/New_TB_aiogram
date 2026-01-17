@@ -16,15 +16,16 @@ from .bezopasnost import bezopasnost_router
 from .upravlenie import upravlenie_router
 
 __all__ = [
-	 oupds_router
-	 ispolniteli_router
-	 aliment_router
-	 doznanie_router
-	 rozyisk_router
-	 prof_router
-	 oko_router
-	 informatika_router
-	 kadry_router
-	 bezopasnost_router
-	 upravlenie_router
+    "oupds_router",
+    "ispolniteli_router",
+    "aliment_router",
+    "doznanie_router",
+    "rozyisk_router",
+    "prof_router",
+    "oko_router",
+    "informatika_router",
+    "kadry_router",
+    "bezopasnost_router",
+    "upravlenie_router",
 ]
+
