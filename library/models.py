@@ -2,11 +2,11 @@
 Модели данных для вопросов, тестов, пользователей.
 Использует Pydantic для валидации JSON из файлов вопросов.
 """
-import asyncio
 from dataclasses import dataclass
 from typing import List, Set, Optional
 from enum import Enum
 from pydantic import BaseModel, Field, validator
+import asyncio
 
 class Difficulty(str, Enum):
     """Уровни сложности."""
