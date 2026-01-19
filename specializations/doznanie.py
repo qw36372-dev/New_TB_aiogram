@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @doznanie_router.message(F.text == "🎯 Дознание")
 async def start_doznanie_test(message: Message, state: FSMContext):
-    """Начало теста по Дознанию."""
+    """Начало теста - Дознание."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
