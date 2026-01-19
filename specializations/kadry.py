@@ -1,6 +1,6 @@
 """
 Роутер специализации "Алименты" — полный тест с FSM.
-Шаблон для остальных 10 (скопируйте, замените "aliment" и название кнопки).
+Шаблон для остальных 10 (скопируйте, замените "kadry" и название кнопки).
 ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
 """
 import asyncio
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 stats_manager = StatsManager()
 TEST_STATES: dict[int, CurrentTestState] = {}  # Активные тесты пользователей
 
-aliment_router = Router()
-aliment_router.message.middleware(AntiSpamMiddleware())
+kadry_router = Router()
+kadry_router.message.middleware(AntiSpamMiddleware())
 
 async def timeout_callback(bot, chat_id: int, user_id: int):
     """Обработчик таймаута теста."""
@@ -37,8 +37,8 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@aliment_router.message(F.text == "Алименты")
-async def start_aliment_test(message: Message, state: FSMContext):
+@kadry_router.message(F.text == "Алименты")
+async def start_kadry_test(message: Message, state: FSMContext):
     """Начало теста по Алиментам."""
     await message.delete()
     await message.bot.send_message(
@@ -49,7 +49,7 @@ async def start_aliment_test(message: Message, state: FSMContext):
     await state.set_state(TestStates.waiting_full_name)
     await message.answer("📝 Введите ФИО:")
 
-@aliment_router.message(StateFilter(TestStates.waiting_full_name))
+@kadry_router.message(StateFilter(TestStates.waiting_full_name))
 async def process_full_name(message: Message, state: FSMContext):
     """Сохранение ФИО."""
     await state.update_data(full_name=message.text.strip())
@@ -57,7 +57,7 @@ async def process_full_name(message: Message, state: FSMContext):
     await state.set_state(TestStates.waiting_position)
     await message.answer("💼 Должность:")
 
-@aliment_router.message(StateFilter(TestStates.waiting_position))
+@kadry_router.message(StateFilter(TestStates.waiting_position))
 async def process_position(message: Message, state: FSMContext):
     """Сохранение должности."""
     await state.update_data(position=message.text.strip())
@@ -65,12 +65,12 @@ async def process_position(message: Message, state: FSMContext):
     await state.set_state(TestStates.waiting_department)
     await message.answer("🏢 Подразделение:")
 
-@aliment_router.message(StateFilter(TestStates.waiting_department))
+@kadry_router.message(StateFilter(TestStates.waiting_department))
 async def process_department(message: Message, state: FSMContext):
     """Переход к выбору сложности."""
     data = await state.get_data()
     data["department"] = message.text.strip()
-    data["specialization"] = "aliment"
+    data["specialization"] = "kadry"
     await message.delete()
     await state.update_data(**data)
     await state.set_state(TestStates.answering_question)
@@ -79,7 +79,7 @@ async def process_department(message: Message, state: FSMContext):
         reply_markup=get_difficulty_keyboard()
     )
 
-@aliment_router.callback_query(F.data.startswith("diff_"))
+@kadry_router.callback_query(F.data.startswith("diff_"))
 async def select_difficulty(callback: CallbackQuery, state: FSMContext):
     """Инициализация теста по сложности."""
     _, diff_name = callback.data.split("_", 1)
@@ -137,7 +137,7 @@ async def start_question(message: Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-@aliment_router.callback_query(F.data.startswith("ans_"))
+@kadry_router.callback_query(F.data.startswith("ans_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     """Переключение выбора ответа."""
     _, idx_str = callback.data.split("_")
@@ -159,7 +159,7 @@ async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer()
 
-@aliment_router.callback_query(F.data == "next_question")
+@kadry_router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Переход к следующему вопросу."""
     user_id = callback.from_user.id
