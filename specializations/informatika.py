@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @informatika_router.message(F.text == "📱 Информатизация и информационная безопасность")
 async def start_informatika_test(message: Message, state: FSMContext):
-    """Начало теста по  Информатизации и информационной безопасности."""
+    """Начало теста -  Информатизация и информационная безопасность."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
