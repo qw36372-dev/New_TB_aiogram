@@ -112,7 +112,18 @@ async def main():
     
     # ROOT РОУТЕР /start — ВНЕ main(), ГЛОБАЛЬНО
     main_router = Router()
-    
+
+@menu_router.callback_query(F.data.in_(SPECIALIZATIONS))
+async def select_specialization(callback: CallbackQuery, state: FSMContext):
+    """Старт любого теста: ФИО → сложность."""
+    await callback.message.delete()
+    await callback.bot.send_message(callback.message.chat.id, "🧪 Начинаем тест!")
+    await state.set_state(TestStates.waiting_full_name)
+    await callback.message.answer("📝 Введите ФИО:")
+    await callback.answer()
+
+dp.include_router(menu_router)
+
     @main_router.message(Command("start"))
     async def cmd_start(message: Message):
         kb = InlineKeyboardMarkup(inline_keyboard=[
