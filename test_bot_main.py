@@ -87,14 +87,14 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
-    # Middleware
+        # Middleware
     try:
         dp.message.middleware(AntiSpamMiddleware())
         logger.info("✅ AntiSpamMiddleware подключен")
     except Exception as e:
         logger.warning(f"Middleware warning: {e}")
     
-    # === ROOT РОУТЕР /start ===
+    # === ROOT РОУТЕР /start ТОЛЬКО ===
     main_router = Router()
     
     @main_router.message(Command("start"))
@@ -116,21 +116,7 @@ async def main():
     
     dp.include_router(main_router)
     
-    # === ГЛОБАЛЬНЫЙ РОУТЕР кнопок специализаций (БАЗОВЫЙ FSM) ===
-    menu_router = Router()
-    
-    @menu_router.callback_query(F.data.in_(SPECIALIZATIONS))
-    async def select_specialization(callback: CallbackQuery, state):
-        """Общий старт: ФИО → Должность → Сложность."""
-        await callback.message.delete()
-        await callback.message.answer("🧪 Тест запущен!")
-        await state.set_state("waiting_full_name")  # Базовое состояние
-        await callback.message.answer("📝 Введите ФИО:")
-        await callback.answer()
-    
-    dp.include_router(menu_router)
-    
-    # === 11 СПЕЦИАЛИЗАЦИЙ ===
+    # === 11 СПЕЦИАЛИЗАЦИЙ (их роутеры сами обработают callback) ===
     loaded_count = 0
     for spec in SPECIALIZATIONS:
         if load_router(spec):
