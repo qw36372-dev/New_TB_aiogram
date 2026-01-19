@@ -1,5 +1,5 @@
 """
-Роутер специализации "ООУПДС" — полный тест с FSM. ИСПРАВЛЕН: callback_query вместо message.
+Роутер специализации "ООУПДС" — полный тест с FSM.
 """
 import asyncio
 import logging
