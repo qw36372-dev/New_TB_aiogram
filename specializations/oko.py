@@ -1,5 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM.
+Роутер специализации "Организация управления и контроля" — полный тест с FSM.
 Шаблон для остальных 10 (скопируйте, замените "oko" и название кнопки).
 ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
 """
@@ -37,9 +37,9 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@oko_router.message(F.text == "Алименты")
+@oko_router.message(F.text == "Организация управления и контроля")
 async def start_oko_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста - Организация управления и контроля."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
