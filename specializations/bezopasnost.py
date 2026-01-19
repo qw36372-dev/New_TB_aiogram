@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @bezopasnost_router.message(F.text == "🔒 Обеспечение собственной безопасности")
 async def start_bezopasnost_test(message: Message, state: FSMContext):
-    """Начало теста по -  Обеспечение собственной безопасности."""
+    """Начало теста -  Обеспечение собственной безопасности."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
