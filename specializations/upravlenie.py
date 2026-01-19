@@ -1,7 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM.
-Шаблон для остальных 10 (скопируйте, замените "upravlenie" и название кнопки).
-ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
+Роутер специализации "Управленческая деятельность" — полный тест с FSM.
 """
 import asyncio
 import logging
@@ -37,9 +35,9 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@upravlenie_router.message(F.text == "Алименты")
+@upravlenie_router.message(F.text == "Управленческая деятельность")
 async def start_upravlenie_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста - Управленческая деятельность."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
