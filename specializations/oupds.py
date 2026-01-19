@@ -1,5 +1,5 @@
 """
-Роутер специализации "ООУПДС" — полный тест с FSM.
+Роутер специализации "ООУПДС" — полный тест с FSM. ИСПРАВЛЕН: callback_query вместо message.
 """
 import asyncio
 import logging
@@ -35,17 +35,14 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@oupds_router.message(F.text == "🚨 ООУПДС")
-async def start_oupds_test(message: Message, state: FSMContext):
+@oupds_router.callback_query(F.data == "oupds")  # ✅ ИСПРАВЛЕНО: CallbackQuery!
+async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
     """Начало теста - ООУПДС."""
-    await message.delete()
-    await message.bot.send_message(
-        message.chat.id,
-        get_logo_text(),
-        reply_markup=get_main_keyboard()
-    )
+    await callback.message.delete()
+    await callback.message.answer(get_logo_text(), reply_markup=get_main_keyboard())
     await state.set_state(TestStates.waiting_full_name)
-    await message.answer("📝 Введите ФИО:")
+    await callback.message.answer("📝 Введите ФИО:")
+    await callback.answer()  # Закрываем индикатор кнопки
 
 @oupds_router.message(StateFilter(TestStates.waiting_full_name))
 async def process_full_name(message: Message, state: FSMContext):
@@ -227,5 +224,5 @@ async def finish_test(message: Message, state: FSMContext):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-    # Удаление временного PDF (асинхронно)
+    # Удаление временного PDF
     asyncio.create_task(asyncio.to_thread(os.remove, cert_path))
