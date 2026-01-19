@@ -137,7 +137,8 @@ async def main():
     except Exception as e:
         logger.error(f"Критическая ошибка polling: {e}", exc_info=True)
     finally:
-        await dp.stop_polling()
+        await bot.session.close()
+        logger.info("Бот остановлен корректно")
 
 if __name__ == "__main__":
     try:
