@@ -1,7 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM.
-Шаблон для остальных 10 (скопируйте, замените "rozyisk" и название кнопки).
-ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
+Роутер специализации "Исполнительный розыск и реализация имущества" — полный тест с FSM.
 """
 import asyncio
 import logging
@@ -37,9 +35,9 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@rozyisk_router.message(F.text == "Алименты")
+@rozyisk_router.message(F.text == "Исполнительный розыск и реализация имущества")
 async def start_rozyisk_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста - Исполнительный розыск и реализация имущества."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
