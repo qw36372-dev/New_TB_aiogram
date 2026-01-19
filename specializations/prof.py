@@ -1,7 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM.
-Шаблон для остальных 10 (скопируйте, замените "prof" и название кнопки).
-ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
+Роутер специализации "Организация профессиональной подготовки" — полный тест с FSM.
 """
 import asyncio
 import logging
@@ -37,9 +35,9 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@prof_router.message(F.text == "Алименты")
+@prof_router.message(F.text == "Организация профессиональной подготовки")
 async def start_prof_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста - Организация профессиональной подготовки."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
