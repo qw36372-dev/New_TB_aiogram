@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @ispolniteli_router.message(F.text == "Исполнительное производство")
 async def start_ispolniteli_test(message: Message, state: FSMContext):
-    """Начало теста по Исполнительному производству."""
+    """Начало теста - Исполнительное производство."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
