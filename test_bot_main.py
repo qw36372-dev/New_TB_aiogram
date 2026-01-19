@@ -16,8 +16,8 @@ from aiogram import Bot, Dispatcher, Router, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
 
 try:
     from config.settings import Settings
@@ -29,7 +29,7 @@ try:
 except ImportError as e:
     raise ImportError("library.anti_spam не найден. Создайте middleware или удалите строку.") from e
 
-# Список роутеров для динамической загрузки с проверкой
+# Список роутеров для динамической загрузки
 SPECIALIZATIONS = [
     "oupds", "ispolniteli", "aliment", "doznanie", "rozyisk",
     "prof", "oko", "informatika", "kadry", "bezopasnost", "upravlenie"
@@ -47,14 +47,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Глобальные переменные для shutdown
+# Глобальные переменные
 bot: Bot | None = None
 dp: Dispatcher | None = None
 
 def load_router(module_name: str) -> bool:
     """Загрузка роутера с проверкой."""
     try:
-        mod = __import__(f"specializations.{module_name}", fromlist=["router"])
+        mod = __import__(f"specializations.{module_name}", fromlist=[f"{module_name}_router"])
         router = getattr(mod, f"{module_name}_router")
         dp.include_router(router)
         logger.info(f"✅ Загружен роутер: {module_name}_router")
@@ -64,66 +64,39 @@ def load_router(module_name: str) -> bool:
         return False
 
 async def on_startup():
-    """Startup hook."""
     logger.info("🚀 Бот инициализирован и готов к работе")
 
 async def on_shutdown():
-    """Shutdown hook."""
     logger.info("🛑 Завершение работы бота")
     if bot:
         await bot.session.close()
     logger.info("👋 Бот остановлен корректно")
 
 async def main():
-    """Главная функция запуска бота."""
     global bot, dp
     
-    # Инициализация настроек с проверкой
-    try:
-        settings = Settings()
-    except Exception as e:
-        logger.error(f"Ошибка настроек: {e}")
-        sys.exit(1)
-    
-    # Проверка токена
+    # Инициализация
+    settings = Settings()
     if not settings.api_token:
-        logger.error("API_TOKEN отсутствует в окружении")
+        logger.error("API_TOKEN отсутствует")
         sys.exit(1)
     
-    # Инициализация бота
-    bot = Bot(
-        token=settings.api_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-    
-    # Dispatcher с MemoryStorage
+    bot = Bot(token=settings.api_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     
-    # Startup/Shutdown hooks
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
-    # Подключение middleware
+    # Middleware
     try:
         dp.message.middleware(AntiSpamMiddleware())
         logger.info("✅ AntiSpamMiddleware подключен")
     except Exception as e:
-        logger.warning(f"Предупреждение middleware: {e}")
+        logger.warning(f"Middleware warning: {e}")
     
-    # ROOT РОУТЕР /start — ВНЕ main(), ГЛОБАЛЬНО
+    # === ROOT РОУТЕР /start ===
     main_router = Router()
-
-@menu_router.callback_query(F.data.in_(SPECIALIZATIONS))
-async def select_specialization(callback: CallbackQuery, state: FSMContext):
-    """Старт любого теста: ФИО → сложность."""
-    await callback.message.delete()
-    await callback.bot.send_message(callback.message.chat.id, "🧪 Начинаем тест!")
-    await state.set_state(TestStates.waiting_full_name)
-    await callback.message.answer("📝 Введите ФИО:")
-    await callback.answer()
-
-dp.include_router(menu_router)
-
+    
     @main_router.message(Command("start"))
     async def cmd_start(message: Message):
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -143,22 +116,32 @@ dp.include_router(menu_router)
     
     dp.include_router(main_router)
     
-    # Динамическая загрузка 11 роутеров специализаций
+    # === ГЛОБАЛЬНЫЙ РОУТЕР кнопок специализаций (БАЗОВЫЙ FSM) ===
+    menu_router = Router()
+    
+    @menu_router.callback_query(F.data.in_(SPECIALIZATIONS))
+    async def select_specialization(callback: CallbackQuery, state):
+        """Общий старт: ФИО → Должность → Сложность."""
+        await callback.message.delete()
+        await callback.message.answer("🧪 Тест запущен!")
+        await state.set_state("waiting_full_name")  # Базовое состояние
+        await callback.message.answer("📝 Введите ФИО:")
+        await callback.answer()
+    
+    dp.include_router(menu_router)
+    
+    # === 11 СПЕЦИАЛИЗАЦИЙ ===
     loaded_count = 0
     for spec in SPECIALIZATIONS:
         if load_router(spec):
             loaded_count += 1
     
     logger.info(f"🚀 Загружено роутеров: {loaded_count}/{len(SPECIALIZATIONS)}")
-    
-    if loaded_count == 0:
-        logger.warning("Нет загруженных модулей специализаций!")
-    
     logger.info("Запуск polling...")
     
-    # Graceful shutdown
+    # Signals
     def signal_handler(signum, frame):
-        logger.info(f"Получен сигнал {signum}")
+        logger.info(f"Сигнал {signum}")
         if dp:
             asyncio.create_task(dp.stop_polling())
     
@@ -169,15 +152,15 @@ dp.include_router(menu_router)
     try:
         await dp.start_polling(bot)
     except KeyboardInterrupt:
-        logger.info("Получен KeyboardInterrupt")
+        logger.info("KeyboardInterrupt")
     except Exception as e:
-        logger.error(f"Критическая ошибка polling: {e}", exc_info=True)
+        logger.error(f"Polling error: {e}", exc_info=True)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Программа прервана пользователем")
+        logger.info("Прервано пользователем")
     except Exception as e:
         logger.error(f"Фатальная ошибка: {e}", exc_info=True)
         sys.exit(1)
