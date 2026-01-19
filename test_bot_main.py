@@ -16,6 +16,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import CommandStart, Command
 
 try:
     from config.settings import Settings
@@ -128,7 +130,29 @@ async def main():
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
+# Главный роутер меню
+main_router = Router()
+
+@main_router.message(Command("start"))
+async def cmd_start(message: Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚨 ООУПДС", callback_data="oupds")],
+        [InlineKeyboardButton(text="📊 Исполнители", callback_data="ispolniteli")],
+        [InlineKeyboardButton(text="💰 Алименты", callback_data="aliment")],
+        [InlineKeyboardButton(text="🎯 Дознание", callback_data="doznanie")],
+        [InlineKeyboardButton(text="🔍 Розыск", callback_data="rozyisk")],
+        [InlineKeyboardButton(text="📚 Профстандарты", callback_data="prof")],
+        [InlineKeyboardButton(text="👁️ ОКО", callback_data="oko")],
+        [InlineKeyboardButton(text="💻 Информатизация", callback_data="informatika")],
+        [InlineKeyboardButton(text="👥 Кадры", callback_data="kadry")],
+        [InlineKeyboardButton(text="🛡️ Безопасность", callback_data="bezopasnost")],
+        [InlineKeyboardButton(text="🏛️ Управление", callback_data="upravlenie")]
+    ])
+    await message.answer("🧪 ФССП Тест-бот\nВыберите специализацию:", reply_markup=kb)
+
+dp.include_router(main_router)
+
     # Запуск polling с обработкой ошибок
     try:
         await dp.start_polling(bot)
