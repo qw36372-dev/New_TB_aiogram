@@ -1,5 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM.
+Роутер специализации "Исполнительное производство" — полный тест с FSM.
 Шаблон для остальных 10 (скопируйте, замените "aliment" и название кнопки).
 ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ для production на Bothost.ru.
 """
@@ -37,9 +37,9 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     if user_id in TEST_STATES:
         del TEST_STATES[user_id]
 
-@aliment_router.message(F.text == "Алименты")
+@aliment_router.message(F.text == "Исполнительное производство")
 async def start_aliment_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста по Исполнительному производству."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
