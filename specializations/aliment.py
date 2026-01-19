@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @aliment_router.message(F.text == "Алименты")
 async def start_aliment_test(message: Message, state: FSMContext):
-    """Начало теста по Алиментам."""
+    """Начало теста - Алименты."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
