@@ -37,7 +37,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @oupds_router.message(F.text == "🚨 ООУПДС")
 async def start_oupds_test(message: Message, state: FSMContext):
-    """Начало теста по ООУПДС."""
+    """Начало теста - ООУПДС."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id,
