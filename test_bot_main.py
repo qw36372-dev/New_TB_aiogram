@@ -12,12 +12,12 @@ import signal
 from pathlib import Path
 from typing import List
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, Router, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
 
 try:
     from config.settings import Settings
@@ -56,12 +56,12 @@ def load_router(module_name: str) -> bool:
     try:
         mod = __import__(f"specializations.{module_name}", fromlist=["router"])
         router = getattr(mod, f"{module_name}_router")
-        dp.include_router(router)  # Упрощено: dp всегда готов
+        dp.include_router(router)
         logger.info(f"✅ Загружен роутер: {module_name}_router")
         return True
     except (ImportError, AttributeError) as e:
         logger.error(f"✗ Ошибка загрузки {module_name}: {e}")
-    return False
+        return False
 
 async def on_startup():
     """Startup hook."""
@@ -96,21 +96,43 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     
-    # Dispatcher с MemoryStorage (данные в RAM, сбрасываются при рестарте)
+    # Dispatcher с MemoryStorage
     dp = Dispatcher(storage=MemoryStorage())
     
     # Startup/Shutdown hooks
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
-    # Подключение middleware с обработкой ошибок
+    # Подключение middleware
     try:
         dp.message.middleware(AntiSpamMiddleware())
         logger.info("✅ AntiSpamMiddleware подключен")
     except Exception as e:
         logger.warning(f"Предупреждение middleware: {e}")
     
-    # Динамическая загрузка роутеров
+    # ROOT РОУТЕР /start — ВНЕ main(), ГЛОБАЛЬНО
+    main_router = Router()
+    
+    @main_router.message(Command("start"))
+    async def cmd_start(message: Message):
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚨 ООУПДС", callback_data="oupds")],
+            [InlineKeyboardButton(text="📊 Исполнители", callback_data="ispolniteli")],
+            [InlineKeyboardButton(text="💰 Алименты", callback_data="aliment")],
+            [InlineKeyboardButton(text="🎯 Дознание", callback_data="doznanie")],
+            [InlineKeyboardButton(text="🔍 Розыск", callback_data="rozyisk")],
+            [InlineKeyboardButton(text="📚 Профстандарты", callback_data="prof")],
+            [InlineKeyboardButton(text="👁️ ОКО", callback_data="oko")],
+            [InlineKeyboardButton(text="💻 Информатизация", callback_data="informatika")],
+            [InlineKeyboardButton(text="👥 Кадры", callback_data="kadry")],
+            [InlineKeyboardButton(text="🛡️ Безопасность", callback_data="bezopasnost")],
+            [InlineKeyboardButton(text="🏛️ Управление", callback_data="upravlenie")]
+        ])
+        await message.answer("🧪 ФССП Тест-бот\nВыберите специализацию:", reply_markup=kb)
+    
+    dp.include_router(main_router)
+    
+    # Динамическая загрузка 11 роутеров специализаций
     loaded_count = 0
     for spec in SPECIALIZATIONS:
         if load_router(spec):
@@ -121,48 +143,24 @@ async def main():
     if loaded_count == 0:
         logger.warning("Нет загруженных модулей специализаций!")
     
-    logger.info("Бот запущен в polling режиме (MemoryStorage)")
+    logger.info("Запуск polling...")
     
-    # Graceful shutdown signals
+    # Graceful shutdown
     def signal_handler(signum, frame):
-        logger.info(f"Получен сигнал {signum}, завершение...")
-        asyncio.create_task(dp.stop_polling())
+        logger.info(f"Получен сигнал {signum}")
+        if dp:
+            asyncio.create_task(dp.stop_polling())
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-# Главный роутер меню
-main_router = Router()
-
-@main_router.message(Command("start"))
-async def cmd_start(message: Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚨 ООУПДС", callback_data="oupds")],
-        [InlineKeyboardButton(text="📊 Исполнители", callback_data="ispolniteli")],
-        [InlineKeyboardButton(text="💰 Алименты", callback_data="aliment")],
-        [InlineKeyboardButton(text="🎯 Дознание", callback_data="doznanie")],
-        [InlineKeyboardButton(text="🔍 Розыск", callback_data="rozyisk")],
-        [InlineKeyboardButton(text="📚 Профстандарты", callback_data="prof")],
-        [InlineKeyboardButton(text="👁️ ОКО", callback_data="oko")],
-        [InlineKeyboardButton(text="💻 Информатизация", callback_data="informatika")],
-        [InlineKeyboardButton(text="👥 Кадры", callback_data="kadry")],
-        [InlineKeyboardButton(text="🛡️ Безопасность", callback_data="bezopasnost")],
-        [InlineKeyboardButton(text="🏛️ Управление", callback_data="upravlenie")]
-    ])
-    await message.answer("🧪 ФССП Тест-бот\nВыберите специализацию:", reply_markup=kb)
-
-dp.include_router(main_router)
-
-    # Запуск polling с обработкой ошибок
+    
+    # Polling
     try:
         await dp.start_polling(bot)
     except KeyboardInterrupt:
         logger.info("Получен KeyboardInterrupt")
     except Exception as e:
         logger.error(f"Критическая ошибка polling: {e}", exc_info=True)
-    finally:
-        await bot.session.close()
-        logger.info("Бот остановлен корректно")
 
 if __name__ == "__main__":
     try:
