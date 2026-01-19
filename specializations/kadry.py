@@ -39,7 +39,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @kadry_router.message(F.text == "Кадровая работа")
 async def start_kadry_test(message: Message, state: FSMContext):
-    """Начало теста по Кадровой работе."""
+    """Начало теста - Кадровая работа."""
     await message.delete()
     await message.bot.send_message(
         message.chat.id, 
