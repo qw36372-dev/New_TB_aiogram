@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 stats_manager = StatsManager()
 
 class TestMixin:
-    """Миксин для всех роутеров тестов. Содержит ВСЕХ общие методы."""
+    """Миксин для всех роутеров тестов. Содержит ВСЕ общие методы."""
     
     async def show_first_question(self, message: Message, test_state: CurrentTestState):
         """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
