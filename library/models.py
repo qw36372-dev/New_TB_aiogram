@@ -55,7 +55,10 @@ class CurrentTestState:
     """Текущее состояние теста пользователя."""
     user_id: int
     questions: List[Question]
+    timer: int = 300  # (секунды на вопрос)
+    answers_history: List = field(default_factory=list)
     current_question_idx: int = 0
     selected_answers: Set[int] = None
-    start_time: float = None  # timestamp
+    start_time: float = None
     timer_task: Optional[asyncio.Task] = None
+
