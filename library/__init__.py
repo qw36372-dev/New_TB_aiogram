@@ -3,12 +3,6 @@
 Импортирует все ключевые компоненты для удобства.
 """
 from .test_mixin import TestMixin
-from . import (
-    TestStates, get_main_keyboard, get_difficulty_keyboard,
-    get_test_keyboard, get_finish_keyboard, load_questions_for_specialization,
-    StatsManager, TestTimer, generate_certificate, TestResult, 
-    UserData, Difficulty, CurrentTestState, AntiSpamMiddleware
-)
 
 from .models import (
     CurrentTestState,
@@ -32,6 +26,7 @@ from .timers import TestTimer
 from .anti_spam import AntiSpamMiddleware
 
 __all__ = [
+    "TestMixin",
     "CurrentTestState",
     "Difficulty",
     "Question",
