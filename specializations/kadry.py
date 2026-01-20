@@ -1,5 +1,5 @@
 """
-Роутер специализации "ООУПДС" — полный тест с FSM для продакшена.
+Роутер специализации "Кадровая работа" — полный тест с FSM для продакшена.
 Оптимизировано: устранены дублирования, исправлены импорты, добавлена обработка ошибок.
 """
 import asyncio
@@ -43,7 +43,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 
 @oupds_router.callback_query(F.data == "oupds")
 async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
-    """Начало теста - ООУПДС."""
+    """Начало теста - Кадровая работа."""
     try:
         await callback.message.delete()
         await callback.message.answer(get_logo_text(), reply_markup=get_main_keyboard())
