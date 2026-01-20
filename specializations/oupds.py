@@ -100,8 +100,11 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 
     # Состояние теста с историей ответов
     test_state = CurrentTestState(
-        callback.from_user.id, questions, timer=timer, answers_history=[]
-    )
+    user_id=callback.from_user.id,
+    questions=questions,
+    timer=timer,
+    answers_history=[]
+)
     TEST_STATES[callback.from_user.id] = test_state
 
     await callback.message.delete()
