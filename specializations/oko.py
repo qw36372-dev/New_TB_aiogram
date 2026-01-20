@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 stats_manager = StatsManager()
 TEST_STATES: dict[int, CurrentTestState] = {}  # Активные тесты пользователей
 
-oupds_router = Router()
-oupds_router.message.middleware(AntiSpamMiddleware())
+oko_router = Router()
+oko_router.message.middleware(AntiSpamMiddleware())
 
 async def timeout_callback(bot, chat_id: int, user_id: int):
     """Обработчик таймаута теста."""
@@ -41,8 +41,8 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
         if user_id in TEST_STATES:
             del TEST_STATES[user_id]
 
-@oupds_router.callback_query(F.data == "oupds")
-async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
+@oko_router.callback_query(F.data == "oko")
+async def start_oko_test(callback: CallbackQuery, state: FSMContext):
     """Начало теста - Организация управления и контроля."""
     try:
         await callback.message.delete()
@@ -51,10 +51,10 @@ async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("📝 Введите ФИО:")
         await callback.answer()
     except Exception as e:
-        logger.error(f"Start OUPDS test error: {e}")
+        logger.error(f"Start oko test error: {e}")
         await callback.answer("❌ Ошибка запуска теста")
 
-@oupds_router.message(StateFilter(TestStates.waiting_full_name))
+@oko_router.message(StateFilter(TestStates.waiting_full_name))
 async def process_full_name(message: Message, state: FSMContext):
     """Сохранение ФИО."""
     try:
@@ -66,7 +66,7 @@ async def process_full_name(message: Message, state: FSMContext):
         logger.error(f"Process full name error: {e}")
         await message.answer("❌ Ошибка сохранения данных")
 
-@oupds_router.message(StateFilter(TestStates.waiting_position))
+@oko_router.message(StateFilter(TestStates.waiting_position))
 async def process_position(message: Message, state: FSMContext):
     """Сохранение должности."""
     try:
@@ -78,13 +78,13 @@ async def process_position(message: Message, state: FSMContext):
         logger.error(f"Process position error: {e}")
         await message.answer("❌ Ошибка сохранения данных")
 
-@oupds_router.message(StateFilter(TestStates.waiting_department))
+@oko_router.message(StateFilter(TestStates.waiting_department))
 async def process_department(message: Message, state: FSMContext):
     """Переход к выбору сложности."""
     try:
         data = await state.get_data()
         data["department"] = message.text.strip()
-        data["specialization"] = "oupds"
+        data["specialization"] = "oko"
         await message.delete()
         await state.update_data(**data)
         await state.set_state(TestStates.answering_question)
@@ -96,7 +96,7 @@ async def process_department(message: Message, state: FSMContext):
         logger.error(f"Process department error: {e}")
         await message.answer("❌ Ошибка перехода к тесту")
 
-@oupds_router.callback_query(F.data.startswith("diff_"))
+@oko_router.callback_query(F.data.startswith("diff_"))
 async def select_difficulty(callback: CallbackQuery, state: FSMContext):
     """Инициализация теста по сложности."""
     try:
@@ -104,7 +104,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         difficulty = Difficulty(diff_name)
 
         # Загрузка вопросов
-        questions = load_questions_for_specialization("oupds", difficulty, callback.from_user.id)
+        questions = load_questions_for_specialization("oko", difficulty, callback.from_user.id)
         if not questions:
             await callback.answer("❌ Вопросы не найдены!")
             return
@@ -170,7 +170,7 @@ async def start_question(message: Message, state: FSMContext):
         logger.error(f"Start question error: {e}")
         await message.answer("❌ Ошибка отображения вопроса")
 
-@oupds_router.callback_query(F.data.startswith("ans_"))
+@oko_router.callback_query(F.data.startswith("ans_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     """Переключение выбора ответа."""
     try:
@@ -200,7 +200,7 @@ async def toggle_answer(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Toggle answer error: {e}")
         await callback.answer("❌ Ошибка выбора ответа")
 
-@oupds_router.callback_query(F.data == "next_question")
+@oko_router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Переход к следующему вопросу."""
     try:
