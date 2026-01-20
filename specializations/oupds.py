@@ -80,12 +80,39 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
     _, diff_name = callback.data.split("_", 1)
     difficulty = Difficulty(diff_name)
 
+    # Загрузка вопросов
+    questions = load_questions_by_difficulty(diff_name)  # ваша функция загрузки
+    if not questions:
+        await callback.answer("❌ Вопросы не найдены!")
+        return
+
     data = await state.get_data()
     user_data = UserData(
         **data,
         difficulty=difficulty
     )
-    await state.update_data(user_data=user_data.model_dump())
+    
+    # Создание состояния теста
+    timer = 300  # 5 минут на вопрос
+    test_state = CurrentTestState(
+        user_id=callback.from_user.id,
+        questions=questions,
+        timer=timer,
+        answers_history=[]
+    )
+    
+    # Сохранение данных
+    await state.update_data(
+        user_data=user_data.model_dump(),
+        current_test=test_state
+    )
+    
+    # Переход к вопросам
+    await TestStates.answering_question.set()
+    await callback.answer("✅ Тест начался!")
+    
+    # Первый вопрос
+    await show_next_question(callback.message, state)
 
     # Загрузка вопросов из JSON (questions/oupds.json)
     questions = load_questions_for_specialization(
