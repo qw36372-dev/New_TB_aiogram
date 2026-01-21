@@ -29,7 +29,6 @@ from library import (
 from assets.logo import get_logo_text
 
 logger = logging.getLogger(__name__)
-TEST_STATES: dict[int, CurrentTestState] = {}  # Активные тесты
 
 oupds_router = Router()
 oupds_router.message.middleware(AntiSpamMiddleware())
