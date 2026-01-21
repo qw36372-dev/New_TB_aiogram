@@ -22,27 +22,31 @@ class TestMixin:
     """Миксин для всех роутеров тестов. Содержит ВСЕ общие методы."""
     
     async def show_first_question(self, message: Message, test_state: CurrentTestState):
-        """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
-        try:
-            user_id = test_state.user_id
-            q = test_state.questions[0]
-            
-            time_left = test_state.timer.remaining_time()
-            options_text = "\n".join([f"{i}. {opt}" for i, opt in enumerate(q.options, 1)])
+    """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
+    try:
+        # ✅ ЛОКАЛЬНЫЙ ИМПОРТ — разрывает circular import
+        from library.keyboards import get_test_keyboard
+        from library.models import CurrentTestState  # Если не импортировано выше
+        
+        user_id = test_state.user_id
+        q = test_state.questions[0]
+        
+        time_left = test_state.timer.remaining_time()
+        options_text = "\n".join([f"{i}. {opt}" for i, opt in enumerate(q.options, 1)])
 
-            await message.answer(
-                f"⏰ <b>{int(time_left)}</b>с\n\n"
-                f"❓ <b>Вопрос 1/{len(test_state.questions)}:</b>\n"
-                f"{q.question}\n\n"
-                f"{options_text}",
-                reply_markup=get_test_keyboard(set()),
-                parse_mode="HTML"
-            )
-            logger.info(f"✅ Первый вопрос показан для {user_id}")
-        except Exception as e:
-            logger.error(f"Show first question error: {e}")
-            await message.answer("❌ Ошибка показа вопроса")
-    
+        await message.answer(
+            f"⏰ <b>{int(time_left)}</b>с\n\n"
+            f"❓ <b>Вопрос 1/{len(test_state.questions)}:</b>\n"
+            f"{q.question}\n\n"
+            f"{options_text}",
+            reply_markup=get_test_keyboard(set()),
+            parse_mode="HTML"
+        )
+        logger.info(f"✅ Первый вопрос показан для {user_id}")
+    except Exception as e:
+        logger.error(f"Show first question error: {e}")
+        await message.answer("❌ Ошибка показа вопроса")
+
     async def safe_start_question(self, message: Message, state: FSMContext, TEST_STATES: dict):
         """Стандартный start_question с проверками."""
         try:
