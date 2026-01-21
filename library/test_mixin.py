@@ -10,10 +10,10 @@ from typing import Set
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 
-from . import (
-    get_test_keyboard, get_finish_keyboard, CurrentTestState, TestResult,
-    UserData, StatsManager, generate_certificate
-)
+# from . import (
+    # get_test_keyboard, get_finish_keyboard, CurrentTestState, TestResult,
+    # UserData, StatsManager, generate_certificate
+# )
 logger = logging.getLogger(__name__)
 
 stats_manager = StatsManager()
