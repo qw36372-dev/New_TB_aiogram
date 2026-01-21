@@ -12,10 +12,21 @@ from aiogram.fsm.context import FSMContext
 
 from config.settings import settings
 from library import (
-    TestStates, TestMixin, get_main_keyboard, get_difficulty_keyboard,
-    load_questions_for_specialization, Difficulty, CurrentTestState,
-    TestTimer, UserData, AntiSpamMiddleware
+    TestStates,
+    get_main_keyboard,
+    get_difficulty_keyboard,
+    load_questions_for_specialization,
+    Difficulty,
+    CurrentTestState,
+    TestTimer,
+    UserData,
+    AntiSpamMiddleware,
+    show_first_question,
+    handle_answer_toggle,
+    handle_next_question,
+    safe_start_question
 )
+
 from assets.logo import get_logo_text
 
 logger = logging.getLogger(__name__)
