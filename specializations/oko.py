@@ -1,5 +1,5 @@
 """
-Роутер специализации "Алименты" — полный тест с FSM для продакшена.
+Роутер специализации "Организация управления и контроля" — полный тест с FSM для продакшена.
 ✅ ИСПРАВЛЕНО: проблема "Сессия истекла" после "Тест начат!".
 ✅ РЕФАКТОРИНГ: TestMixin + 70% меньше кода.
 """
@@ -43,7 +43,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 # ========================================
 @aliment_router.callback_query(F.data == "aliment")
 async def start_aliment_test(callback: CallbackQuery, state: FSMContext):
-    """Начало теста - Алименты."""
+    """Начало теста - Организация управления и контроля."""
     try:
         await callback.message.delete()
         await callback.message.answer(get_logo_text(), reply_markup=get_main_keyboard())
