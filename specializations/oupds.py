@@ -26,7 +26,6 @@ from library import (
     handle_next_question,
     safe_start_question
 )
-
 from assets.logo import get_logo_text
 
 logger = logging.getLogger(__name__)
