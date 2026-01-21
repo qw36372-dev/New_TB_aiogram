@@ -101,7 +101,6 @@ class TestMixin:
             )
             await callback.answer()
         except Exception as e:
-            logger.error(f"Toggle
             logger.error(f"Toggle answer error: {e}")
             await callback.answer("❌ Ошибка выбора ответа")
 
