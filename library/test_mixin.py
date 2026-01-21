@@ -10,46 +10,44 @@ from typing import Set
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 
-# from . import (
-    # get_test_keyboard, get_finish_keyboard, CurrentTestState, TestResult,
-    # UserData, StatsManager, generate_certificate
-# )
 logger = logging.getLogger(__name__)
 
-stats_manager = StatsManager()
+# Глобальные импорты отложены в методы
+stats_manager = None  # Инициализируется позже
 
 class TestMixin:
     """Миксин для всех роутеров тестов. Содержит ВСЕ общие методы."""
     
-    async def show_first_question(self, message: Message, test_state: CurrentTestState):
-    """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
-    try:
-        # ✅ ЛОКАЛЬНЫЙ ИМПОРТ — разрывает circular import
-        from library.keyboards import get_test_keyboard
-        from library.models import CurrentTestState  # Если не импортировано выше
-        
-        user_id = test_state.user_id
-        q = test_state.questions[0]
-        
-        time_left = test_state.timer.remaining_time()
-        options_text = "\n".join([f"{i}. {opt}" for i, opt in enumerate(q.options, 1)])
+    async def show_first_question(self, message: Message, test_state):
+        """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
+        try:
+            from library.keyboards import get_test_keyboard
+            from library.models import CurrentTestState
+            
+            user_id = test_state.user_id
+            q = test_state.questions[0]
+            
+            time_left = test_state.timer.remaining_time()
+            options_text = "\n".join([f"{i}. {opt}" for i, opt in enumerate(q.options, 1)])
 
-        await message.answer(
-            f"⏰ <b>{int(time_left)}</b>с\n\n"
-            f"❓ <b>Вопрос 1/{len(test_state.questions)}:</b>\n"
-            f"{q.question}\n\n"
-            f"{options_text}",
-            reply_markup=get_test_keyboard(set()),
-            parse_mode="HTML"
-        )
-        logger.info(f"✅ Первый вопрос показан для {user_id}")
-    except Exception as e:
-        logger.error(f"Show first question error: {e}")
-        await message.answer("❌ Ошибка показа вопроса")
+            await message.answer(
+                f"⏰ <b>{int(time_left)}</b>с\n\n"
+                f"❓ <b>Вопрос 1/{len(test_state.questions)}:</b>\n"
+                f"{q.question}\n\n"
+                f"{options_text}",
+                reply_markup=get_test_keyboard(set()),
+                parse_mode="HTML"
+            )
+            logger.info(f"✅ Первый вопрос показан для {user_id}")
+        except Exception as e:
+            logger.error(f"Show first question error: {e}")
+            await message.answer("❌ Ошибка показа вопроса")
 
     async def safe_start_question(self, message: Message, state: FSMContext, TEST_STATES: dict):
         """Стандартный start_question с проверками."""
         try:
+            from library.keyboards import get_test_keyboard
+            
             user_id = message.from_user.id
             if user_id not in TEST_STATES:
                 await message.answer("❌ Сессия теста истекла. Начните заново.")
@@ -75,10 +73,12 @@ class TestMixin:
         except Exception as e:
             logger.error(f"Safe start question error: {e}")
             await message.answer("❌ Ошибка отображения вопроса")
-    
+
     async def handle_answer_toggle(self, callback: CallbackQuery, TEST_STATES: dict):
         """Обработка выбора/снятия ответа."""
         try:
+            from library.keyboards import get_test_keyboard
+            
             _, idx_str = callback.data.split("_")
             idx = int(idx_str)
             user_id = callback.from_user.id
@@ -89,7 +89,7 @@ class TestMixin:
 
             test_state = TEST_STATES[user_id]
             if test_state.selected_answers is None:
-                test_state.selected_answers: Set[int] = set()
+                test_state.selected_answers = set()
 
             if idx in test_state.selected_answers:
                 test_state.selected_answers.discard(idx)
@@ -101,9 +101,10 @@ class TestMixin:
             )
             await callback.answer()
         except Exception as e:
+            logger.error(f"Toggle
             logger.error(f"Toggle answer error: {e}")
             await callback.answer("❌ Ошибка выбора ответа")
-    
+
     async def handle_next_question(self, callback: CallbackQuery, state: FSMContext, TEST_STATES: dict):
         """Переход к следующему вопросу."""
         try:
@@ -123,10 +124,18 @@ class TestMixin:
         except Exception as e:
             logger.error(f"Next question error: {e}")
             await callback.answer("❌ Ошибка перехода")
-    
+
     async def finish_test(self, message: Message, state: FSMContext, TEST_STATES: dict):
         """Завершение теста: подсчёт, сохранение, PDF."""
         try:
+            from library.keyboards import get_finish_keyboard
+            from library import StatsManager, generate_certificate, UserData, TestResult, FSInputFile
+            
+            global stats_manager
+            if stats_manager is None:
+                from library import StatsManager
+                stats_manager = StatsManager()
+
             user_id = message.from_user.id
             if user_id not in TEST_STATES:
                 return
