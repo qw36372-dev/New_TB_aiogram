@@ -167,7 +167,7 @@ async def toggle_answer(callback: CallbackQuery, state: FSMContext):
 @oupds_router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Переход к следующему вопросу. ✅ TestMixin"""
-    await oupds_router.handle_next_question(callback, state, TEST_STATES)
+    await handle_next_question(callback, state, TEST_STATES)
 
 # ========================================
 # ✅ TestMixin: стандартные вопросы (кроме первого)
