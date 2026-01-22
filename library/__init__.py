@@ -2,7 +2,6 @@
 Пакет library — закрытая библиотека вопросов, утилиты, модели.
 Импортирует все ключевые компоненты для удобства.
 """
-from .test_mixin import TestMixin
 
 from .models import (
     CurrentTestState,
