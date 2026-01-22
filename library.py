@@ -110,26 +110,58 @@ async def show_question(message: Message, test_state: CurrentTestState):
         await message.answer("❌ Ошибка показа вопроса")
 
 async def finish_test(message: Message, test_state: CurrentTestState):
-    """✅ Полное завершение: подсчёт, статистика, PDF."""
+    """Завершение теста: подсчёт, сохранение, PDF."""
     try:
-        # Подсчёт результатов
-        test_result = calculate_score(test_state)  # Ваша логика подсчёта
-        
-        await stats_manager.save_result(test_result)
+        user_id = test_state.user_id
+        elapsed = await test_state.timer.stop()
+
+        # UserData из test_state (адаптируйте поля)
+        user_data = UserData(
+            full_name=test_state.full_name or "",
+            position=test_state.position or "",
+            department=test_state.department or "",
+            specialization=test_state.specialization,
+            difficulty=test_state.difficulty
+        )
+
+        # Подсчёт из answers_history (если храните по вопросам)
+        correct = 0
+        total_questions = len(test_state.questions)
+        for i, q in enumerate(test_state.questions):
+            user_answers = test_state.answers_history[i] if hasattr(test_state, 'answers_history') and i < len(test_state.answers_history) else set()
+            if user_answers == set(q.correct_answers):  # set для multiple
+                correct += 1
+
+        score_percent = (correct / total_questions) * 100
+        test_result = TestResult(
+            user_id=user_id,
+            specialization=user_data.specialization,
+            difficulty=user_data.difficulty,
+            score=correct,
+            total=total_questions,
+            percent=score_percent,
+            time_spent=elapsed,
+            full_name=user_data.full_name,
+            position=user_data.position,
+            department=user_data.department
+        )
+
+        await StatsManager.save_result(test_result)  # Инстанс или класс-метод
         cert_path = await generate_certificate(test_result)
-        
+
         await message.answer(
-            f"✅ <b>Тест завершён!</b>\n"
-            f"Правильных: {test_result.correct}/{len(test_state.questions)}\n"
-            f"Результат: {test_result.score}%",
+            f"✅ <b>Тест завершён!</b>\n\n"
+            f"Правильных: {correct}/{total_questions} ({score_percent:.1f}%)\n"
+            f"Время: {elapsed:.0f}с\n\n"
+            f"Ваш сертификат готов!",
             reply_markup=get_finish_keyboard(),
             parse_mode="HTML"
         )
         await message.answer_document(FSInputFile(cert_path))
-        
+
         # Cleanup
         asyncio.create_task(asyncio.to_thread(os.remove, cert_path))
-        logger.info(f"✅ Тест завершён для {test_state.user_id}")
+        logger.info(f"✅ Тест завершён для {user_id}")
         
     except Exception as e:
         logger.error(f"Finish test error: {e}")
