@@ -43,4 +43,11 @@ __all__ = [
     "TestStates",
     "TestTimer",
     "AntiSpamMiddleware"
+    "show_first_question",
+    "handle_answer_toggle", 
+    "handle_next_question",
+    "safe_start_question",
+    "show_question",
+    "finish_test",
+    "toggle_logic"
 ]
