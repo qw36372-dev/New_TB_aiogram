@@ -25,6 +25,11 @@ from .states import TestStates
 from .timers import TestTimer
 from .anti_spam import AntiSpamMiddleware
 
+from .library import (
+    show_first_question, handle_answer_toggle, handle_next_question,
+    safe_start_question, show_question, finish_test, toggle_logic
+)
+
 __all__ = [
     "TestMixin",
     "CurrentTestState",
