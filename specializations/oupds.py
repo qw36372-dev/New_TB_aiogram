@@ -147,7 +147,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("🚀 <b>Тест начат!</b>", parse_mode="HTML")
         
         # ✅ TestMixin: первый вопрос БЕЗ проверок!
-        await oupds_router.show_first_question(callback.message, test_state)
+        await show_first_question(callback.message, test_state)
         await callback.answer()
         
         logger.info(f"✅ Тест oupds запущен для {callback.from_user.id}")
