@@ -30,8 +30,8 @@ from assets.logo import get_logo_text
 
 logger = logging.getLogger(__name__)
 
-oupds_router = Router()
-oupds_router.message.middleware(AntiSpamMiddleware())
+rozyisk_router = Router()
+rozyisk_router.message.middleware(AntiSpamMiddleware())
 
 TEST_STATES: dict[int, CurrentTestState] = {}
 
@@ -52,8 +52,8 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
 # ========================================
 # ✅ FSM: Сбор данных пользователя (БЕЗ ИЗМЕНЕНИЙ)
 # ========================================
-@oupds_router.callback_query(F.data == "oupds")
-async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
+@rozyisk_router.callback_query(F.data == "rozyisk")
+async def start_rozyisk_test(callback: CallbackQuery, state: FSMContext):
     """Начало теста - ООУПДС."""
     try:
         await callback.message.delete()
@@ -62,10 +62,10 @@ async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("📝 Введите ФИО:")
         await callback.answer()
     except Exception as e:
-        logger.error(f"Start oupds test error: {e}")
+        logger.error(f"Start rozyisk test error: {e}")
         await callback.answer("❌ Ошибка запуска теста")
 
-@oupds_router.message(StateFilter(TestStates.waiting_full_name))
+@rozyisk_router.message(StateFilter(TestStates.waiting_full_name))
 async def process_full_name(message: Message, state: FSMContext):
     """Сохранение ФИО."""
     try:
@@ -77,7 +77,7 @@ async def process_full_name(message: Message, state: FSMContext):
         logger.error(f"Process full name error: {e}")
         await message.answer("❌ Ошибка сохранения данных")
 
-@oupds_router.message(StateFilter(TestStates.waiting_position))
+@rozyisk_router.message(StateFilter(TestStates.waiting_position))
 async def process_position(message: Message, state: FSMContext):
     """Сохранение должности."""
     try:
@@ -89,13 +89,13 @@ async def process_position(message: Message, state: FSMContext):
         logger.error(f"Process position error: {e}")
         await message.answer("❌ Ошибка сохранения данных")
 
-@oupds_router.message(StateFilter(TestStates.waiting_department))
+@rozyisk_router.message(StateFilter(TestStates.waiting_department))
 async def process_department(message: Message, state: FSMContext):
     """Переход к выбору сложности."""
     try:
         data = await state.get_data()
         data["department"] = message.text.strip()
-        data["specialization"] = "oupds"  # ✅ Специализация
+        data["specialization"] = "rozyisk"  # ✅ Специализация
         await message.delete()
         await state.update_data(**data)
         await state.set_state(TestStates.answering_question)
@@ -110,7 +110,7 @@ async def process_department(message: Message, state: FSMContext):
 # ========================================
 # ✅ ИНИЦИАЛИЗАЦИЯ ТЕСТА (ИСПРАВЛЕНО)
 # ========================================
-@oupds_router.callback_query(F.data.startswith("diff_"))
+@rozyisk_router.callback_query(F.data.startswith("diff_"))
 async def select_difficulty(callback: CallbackQuery, state: FSMContext):
     """Инициализация теста по сложности. ✅ РЕШЕНО!"""
     try:
@@ -118,7 +118,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         difficulty = Difficulty(diff_name)
 
         # 1. Загрузка вопросов
-        questions = load_questions_for_specialization("oupds", difficulty, callback.from_user.id)
+        questions = load_questions_for_specialization("rozyisk", difficulty, callback.from_user.id)
         if not questions:
             await callback.answer("❌ Вопросы не найдены!")
             return
@@ -152,7 +152,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await show_first_question(callback.message, test_state)
         await callback.answer()
         
-        logger.info(f"✅ Тест oupds запущен для {callback.from_user.id}")
+        logger.info(f"✅ Тест rozyisk запущен для {callback.from_user.id}")
         
     except Exception as e:
         logger.error(f"Select difficulty error: {e}")
@@ -161,12 +161,12 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 # ========================================
 # ✅ TestMixin: обработчики вопросов
 # ========================================
-@oupds_router.callback_query(F.data.startswith("ans_"))
+@rozyisk_router.callback_query(F.data.startswith("ans_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     """Переключение выбора ответа. ✅ TestMixin"""
     await handle_answer_toggle(callback, TEST_STATES)
 
-@oupds_router.callback_query(F.data == "next_question")
+@rozyisk_router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
     """Переход к следующему вопросу. ✅ TestMixin"""
     await handle_next_question(callback, state, TEST_STATES)
@@ -175,7 +175,7 @@ async def next_question(callback: CallbackQuery, state: FSMContext):
 # ✅ TestMixin: стандартные вопросы (кроме первого)
 # ========================================
 # Этот хэндлер нужен для переходов между вопросами (не для первого)
-@oupds_router.message(TestStates.answering_question)
+@rozyisk_router.message(TestStates.answering_question)
 async def handle_question_message(message: Message, state: FSMContext):
     """Обработка сообщений во время теста."""
     await safe_start_question(message, state, TEST_STATES)
