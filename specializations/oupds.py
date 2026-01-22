@@ -176,4 +176,4 @@ async def next_question(callback: CallbackQuery, state: FSMContext):
 @oupds_router.message(TestStates.answering_question)
 async def handle_question_message(message: Message, state: FSMContext):
     """Обработка сообщений во время теста."""
-    await oupds_router.safe_start_question(message, state, TEST_STATES)
+    await safe_start_question(message, state, TEST_STATES)
