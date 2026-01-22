@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 oupds_router = Router()
 oupds_router.message.middleware(AntiSpamMiddleware())
 
+TEST_STATES: dict[int, CurrentTestState] = {}
+
 async def timeout_callback(bot, chat_id: int, user_id: int):
     """Обработчик таймаута теста."""
     try:
