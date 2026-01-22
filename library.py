@@ -14,11 +14,10 @@ from aiogram.fsm.context import FSMContext
 
 logger = logging.getLogger(__name__)
 
-# Предполагаемые импорты моделей/клавиатур (адаптируйте под вашу структуру)
-# from library.models import CurrentTestState
-# from library.keyboards import get_test_keyboard, get_finish_keyboard
-# from library.stats import StatsManager
-# from library.certificates import generate_certificate
+from library.models import CurrentTestState
+from library.keyboards import get_test_keyboard, get_finish_keyboard
+from library.stats import StatsManager
+from library.certificates import generate_certificate
 
 async def show_first_question(message: Message, test_state: CurrentTestState):
     """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
