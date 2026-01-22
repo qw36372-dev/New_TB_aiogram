@@ -30,7 +30,6 @@ from .library import (
 )
 
 __all__ = [
-    "TestMixin",
     "CurrentTestState",
     "Difficulty",
     "Question",
