@@ -162,7 +162,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 @oupds_router.callback_query(F.data.startswith("ans_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     """Переключение выбора ответа. ✅ TestMixin"""
-    await oupds_router.handle_answer_toggle(callback, TEST_STATES)
+    await handle_answer_toggle(callback, TEST_STATES)
 
 @oupds_router.callback_query(F.data == "next_question")
 async def next_question(callback: CallbackQuery, state: FSMContext):
