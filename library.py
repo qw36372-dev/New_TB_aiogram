@@ -9,12 +9,12 @@ import asyncio
 import logging
 import os
 from typing import Dict, Any, Set
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 
 logger = logging.getLogger(__name__)
 
-from library.models import CurrentTestState
+from library.models import CurrentTestState, UserData, TestResult
 from library.keyboards import get_test_keyboard, get_finish_keyboard
 from library.stats import StatsManager
 from library.certificates import generate_certificate
