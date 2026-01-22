@@ -47,7 +47,7 @@ __all__ = [
     "get_finish_keyboard",
     "TestStates",
     "TestTimer",
-    "AntiSpamMiddleware"
+    "AntiSpamMiddleware",
     "show_first_question",
     "handle_answer_toggle", 
     "handle_next_question",
