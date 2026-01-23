@@ -7,7 +7,7 @@ from typing import List, Set, Optional
 from enum import Enum
 from pydantic import BaseModel, Field, validator
 import asyncio
-from .timers import TestTimer  # ✅ Импорт для timer как объект
+from .timers import TestTimer
 
 class Difficulty(str, Enum):
     """Уровни сложности."""
@@ -56,9 +56,14 @@ class CurrentTestState:
     """Текущее состояние теста пользователя."""
     user_id: int
     questions: List[Question]
-    timer: Optional[TestTimer] = None  # ✅ Изменено: объект TestTimer вместо int 300
-    answers_history: List = field(default_factory=list)
+    timer: Optional[TestTimer] = None  # ✅ Объект TestTimer
+    answers_history: List[Set[int]] = field(default_factory=list)  # ✅ ЕДИНСТВЕННОЕ: List[Set[int]]
     current_question_idx: int = 0
-    selected_answers: Set[int] = field(default_factory=set)  # ✅ field для mutable Set
+    selected_answers: Set[int] = field(default_factory=set)
     start_time: float = None
     timer_task: Optional[asyncio.Task] = None
+    full_name: str = ""
+    position: str = ""
+    department: str = ""
+    specialization: str = ""
+    difficulty: Difficulty = Difficulty.BASIC
