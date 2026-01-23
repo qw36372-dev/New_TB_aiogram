@@ -3,7 +3,7 @@
 Импортирует все ключевые компоненты для удобства.
 """
 
-# ✅ Сначала базовые импорты (без зависимостей)
+# Сначала базовые импорты (без зависимостей)
 from .enum import Difficulty
 from .models import (
     CurrentTestState,
@@ -14,7 +14,7 @@ from .models import (
 )
 from .timers import TestTimer
 
-# ✅ Остальные импорты
+# Остальные импорты
 from .question_loader import load_questions_for_specialization
 from .stats import StatsManager
 from .certificates import generate_certificate
