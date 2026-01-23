@@ -69,3 +69,10 @@ class TestTimer:
         min_ = int(remaining // 60)
         sec = int(remaining % 60)
         return f"{min_}:{sec:02d}"
+    
+    def remaining_seconds(self) -> int:  # ✅ Новый метод: int секунды для расчётов (// 60)
+        """Оставшиеся секунды (int для math)."""
+        if not self.start_time:
+            return self.total_seconds
+        elapsed = asyncio.get_event_loop().time() - self.start_time
+        return max(0, int(self.total_seconds - elapsed))
