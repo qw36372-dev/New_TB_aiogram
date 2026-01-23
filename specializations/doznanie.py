@@ -24,7 +24,8 @@ from library import (
     show_first_question,
     handle_answer_toggle,
     handle_next_question,
-    safe_start_question
+    safe_start_question,
+    finish_test
 )
 from assets.logo import get_logo_text
 
