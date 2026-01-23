@@ -7,9 +7,8 @@ from typing import List, Set, Optional
 from pydantic import BaseModel, Field, validator
 import asyncio
 
-# ✅ Импорт из enum.py (НЕ из timers!)
 from .enum import Difficulty
-from .timers import TestTimer  # Теперь безопасно!
+from .timers import TestTimer
 
 class AnswerOption:
     """Вариант ответа."""
