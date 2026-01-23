@@ -3,14 +3,18 @@
 Импортирует все ключевые компоненты для удобства.
 """
 
+# ✅ Сначала базовые импорты (без зависимостей)
+from .enum import Difficulty
 from .models import (
     CurrentTestState,
-    Difficulty,
     Question,
     AnswerOption,
     UserData,
     TestResult
 )
+from .timers import TestTimer
+
+# ✅ Остальные импорты
 from .question_loader import load_questions_for_specialization
 from .stats import StatsManager
 from .certificates import generate_certificate
@@ -21,21 +25,26 @@ from .keyboards import (
     get_finish_keyboard
 )
 from .states import TestStates
-from .timers import TestTimer
 from .anti_spam import AntiSpamMiddleware
 
 from .library import (
-    show_first_question, handle_answer_toggle, handle_next_question,
-    safe_start_question, show_question, finish_test, toggle_logic
+    show_first_question, 
+    handle_answer_toggle, 
+    handle_next_question,
+    safe_start_question, 
+    show_question, 
+    finish_test, 
+    toggle_logic
 )
 
 __all__ = [
-    "CurrentTestState",
     "Difficulty",
+    "CurrentTestState",
     "Question",
     "AnswerOption",
     "UserData",
     "TestResult",
+    "TestTimer",
     "load_questions_for_specialization",
     "StatsManager",
     "generate_certificate",
@@ -44,7 +53,6 @@ __all__ = [
     "get_test_keyboard",
     "get_finish_keyboard",
     "TestStates",
-    "TestTimer",
     "AntiSpamMiddleware",
     "show_first_question",
     "handle_answer_toggle", 
