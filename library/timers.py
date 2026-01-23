@@ -7,7 +7,8 @@ from typing import Optional, Callable
 from datetime import timedelta
 
 from config.settings import settings
-from .models import Difficulty
+
+from .enum import Difficulty
 
 class TestTimer:
     """Таймер для одного теста."""
@@ -40,7 +41,8 @@ class TestTimer:
         
         # Таймаут!
         self.is_active = False
-        await self.timeout_callback()
+        if self.timeout_callback:
+            await self.timeout_callback()
     
     async def stop(self) -> str:
         """Остановка и возврат затраченного времени."""
@@ -70,8 +72,8 @@ class TestTimer:
         sec = int(remaining % 60)
         return f"{min_}:{sec:02d}"
     
-    def remaining_seconds(self) -> int:  # ✅ Новый метод: int секунды для расчётов (// 60)
-        """Оставшиеся секунды (int для math)."""
+    def remaining_seconds(self) -> int:
+        """Оставшиеся секунды (int для расчётов)."""
         if not self.start_time:
             return self.total_seconds
         elapsed = asyncio.get_event_loop().time() - self.start_time
