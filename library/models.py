@@ -4,19 +4,13 @@
 """
 from dataclasses import dataclass, field
 from typing import List, Set, Optional
-from enum import Enum
 from pydantic import BaseModel, Field, validator
 import asyncio
-from .timers import TestTimer
 
-class Difficulty(str, Enum):
-    """Уровни сложности."""
-    RESERVE = "резерв"
-    BASIC = "базовый"
-    STANDARD = "стандартный"
-    ADVANCED = "продвинутый"
+# ✅ Импорт из enum.py (НЕ из timers!)
+from .enum import Difficulty
+from .timers import TestTimer  # Теперь безопасно!
 
-@dataclass
 class AnswerOption:
     """Вариант ответа."""
     text: str
@@ -44,7 +38,7 @@ class UserData(BaseModel):
 
 class TestResult(BaseModel):
     """Результат теста."""
-    user_data: UserData
+    user_ UserData
     correct_count: int
     total_questions: int
     grade: str
@@ -56,8 +50,8 @@ class CurrentTestState:
     """Текущее состояние теста пользователя."""
     user_id: int
     questions: List[Question]
-    timer: Optional[TestTimer] = None  # ✅ Объект TestTimer
-    answers_history: List[Set[int]] = field(default_factory=list)  # ✅ ЕДИНСТВЕННОЕ: List[Set[int]]
+    timer: Optional[TestTimer] = None
+    answers_history: List[Set[int]] = field(default_factory=list)
     current_question_idx: int = 0
     selected_answers: Set[int] = field(default_factory=set)
     start_time: float = None
