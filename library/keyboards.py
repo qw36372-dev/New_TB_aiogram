@@ -10,11 +10,11 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
     """Главное меню: 11 специализаций + Помощь."""
     builder = ReplyKeyboardBuilder()
     
-    # 11 кнопок специализаций (замените на реальные названия)
+    # 11 кнопок специализаций
     specs = [
         "🚨 ООУПДС", 
         "📊 Исполнительное производство", 
-		  "🧑‍🧑‍🧒 Алименты",
+        "🧑‍🧑‍🧒 Алименты",
         "🎯 Дознание", 
         "⏳ Исполнительный розыск и реализация имущества",
         "📈 Организация профессиональной подготовки",
@@ -40,19 +40,19 @@ def get_difficulty_keyboard() -> InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
-def get_test_keyboard(selected: set[int] = None) -> InlineKeyboardMarkup:
-    """Клавиатура во время теста: варианты + Далее."""
+def get_test_keyboard(options: list[str], selected: set[int] | None = None) -> InlineKeyboardMarkup:
+    """Клавиатура теста: динамические опции вопроса + toggle + Далее."""
     builder = InlineKeyboardBuilder()
     selected = selected or set()
     
-    for i in range(1, 6):  # Макс 5 вариантов
+    for i, opt_text in enumerate(options):  # Динамика: реальные тексты из q.options
         state = "✅" if i in selected else "⬜"
         builder.button(
-            text=f"{state} {i}",
-            callback_data=f"ans_{i}"
+            text=f"{state} {opt_text}",
+            callback_data=f"toggle_{i}"  # Совместимо с handle_answer_toggle
         )
     
-    builder.button(text="➡️ Далее", callback_data="next_question").adjust(1)
+    builder.button(text="➡️ Далее", callback_data="next").adjust(1)
     builder.adjust(2)
     return builder.as_markup()
 
