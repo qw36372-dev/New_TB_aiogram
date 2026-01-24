@@ -5,6 +5,7 @@ test_bot_main.py — Production-ready Aiogram 3.x Telegram тест-бот дл�
 """
 
 import asyncio
+import importlib
 import logging
 import os
 import sys
@@ -24,10 +25,11 @@ try:
 except ImportError as e:
     raise ImportError("config.settings не найден. Создайте файл с class Settings и api_token = os.getenv('API_TOKEN')") from e
 
+# ✅ Исправленный импорт через __init__.py
 try:
-    from library.anti_spam import AntiSpamMiddleware
+    from library import AntiSpamMiddleware
 except ImportError as e:
-    raise ImportError("library.anti_spam не найден. Создайте middleware или удалите строку.") from e
+    raise ImportError("library.AntiSpamMiddleware не найден. Создайте middleware в library или удалите строку.") from e
 
 # Список роутеров для динамической загрузки
 SPECIALIZATIONS = [
@@ -52,10 +54,12 @@ bot: Bot | None = None
 dp: Dispatcher | None = None
 
 def load_router(module_name: str) -> bool:
-    """Загрузка роутера с проверкой."""
+    """Загрузка роутера с проверкой через importlib."""
     try:
-        mod = __import__(f"specializations.{module_name}", fromlist=[f"{module_name}_router"])
-        router = getattr(mod, f"{module_name}_router")
+        spec_module = importlib.import_module(f"specializations.{module_name}")
+        if not hasattr(spec_module, f"{module_name}_router"):
+            raise AttributeError(f"Роутер {module_name}_router не найден")
+        router = getattr(spec_module, f"{module_name}_router")
         dp.include_router(router)
         logger.info(f"✅ Загружен роутер: {module_name}_router")
         return True
@@ -68,6 +72,12 @@ async def on_startup():
 
 async def on_shutdown():
     logger.info("🛑 Завершение работы бота")
+    # Graceful shutdown задач
+    if dp:
+        tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
     if bot:
         await bot.session.close()
     logger.info("👋 Бот остановлен корректно")
@@ -87,7 +97,7 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
-        # Middleware
+    # ✅ Middleware ПЕРЕД роутерами
     try:
         dp.message.middleware(AntiSpamMiddleware())
         logger.info("✅ AntiSpamMiddleware подключен")
@@ -116,7 +126,7 @@ async def main():
     
     dp.include_router(main_router)
     
-    # === 11 СПЕЦИАЛИЗАЦИЙ (их роутеры сами обработают callback) ===
+    # === 11 СПЕЦИАЛИЗАЦИЙ ===
     loaded_count = 0
     for spec in SPECIALIZATIONS:
         if load_router(spec):
@@ -125,16 +135,17 @@ async def main():
     logger.info(f"🚀 Загружено роутеров: {loaded_count}/{len(SPECIALIZATIONS)}")
     logger.info("Запуск polling...")
     
-    # Signals
+    # ✅ Улучшенные signals (loop-aware)
+    loop = asyncio.get_running_loop()
     def signal_handler(signum, frame):
         logger.info(f"Сигнал {signum}")
         if dp:
-            asyncio.create_task(dp.stop_polling())
+            loop.call_soon_threadsafe(dp.stop_polling)
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # Polling
+    # Polling с обработкой ошибок
     try:
         await dp.start_polling(bot)
     except KeyboardInterrupt:
