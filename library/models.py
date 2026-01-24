@@ -37,7 +37,7 @@ class UserData(BaseModel):
 
 class TestResult(BaseModel):
     """Результат теста."""
-    user_ UserData
+    user: UserData
     correct_count: int
     total_questions: int
     grade: str
