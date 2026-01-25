@@ -1,10 +1,13 @@
 """
 Роутер специализации "ООУПДС" — полный тест с FSM для продакшена.
-✅ ИСПРАВЛЕНО: проблема "Сессия истекла" после "Тест начат!".
-✅ РЕФАКТОРИНГ: TestMixin + 70% меньше кода.
+✅ ИСПРАВЛЕНО: локальный oupds_TEST_STATES (без глобальных конфликтов)
+✅ ИСПРАВЛЕНО: callback_data "toggle_" и "next" 
+✅ УДАЛЕНО: дублирующийся handle_question_message
+✅ TestMixin: совместимость с library
 """
 import asyncio
 import logging
+from typing import Dict
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import StateFilter
@@ -34,7 +37,8 @@ logger = logging.getLogger(__name__)
 oupds_router = Router()
 oupds_router.message.middleware(AntiSpamMiddleware())
 
-TEST_STATES: dict[int, CurrentTestState] = {}
+# ✅ ЛОКАЛЬНЫЙ словарь состояний для ООУПДС (без конфликтов)
+oupds_TEST_STATES: Dict[int, CurrentTestState] = {}
 
 async def timeout_callback(bot, chat_id: int, user_id: int):
     """Обработчик таймаута теста."""
@@ -47,8 +51,8 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     except Exception as e:
         logger.error(f"Timeout callback error for user {user_id}: {e}")
     finally:
-        if user_id in TEST_STATES:
-            del TEST_STATES[user_id]
+        if user_id in oupds_TEST_STATES:
+            del oupds_TEST_STATES[user_id]
 
 # ========================================
 # ✅ FSM: Сбор данных пользователя (БЕЗ ИЗМЕНЕНИЙ)
@@ -113,7 +117,7 @@ async def process_department(message: Message, state: FSMContext):
 # ========================================
 @oupds_router.callback_query(F.data.startswith("diff_"))
 async def select_difficulty(callback: CallbackQuery, state: FSMContext):
-    """Инициализация теста по сложности. ✅ РЕШЕНО!"""
+    """Инициализация теста по сложности."""
     try:
         _, diff_name = callback.data.split("_", 1)
         difficulty = Difficulty(diff_name)
@@ -138,12 +142,12 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         test_state = CurrentTestState(
             user_id=callback.from_user.id,
             questions=questions,
-            current_question_idx=0,      # ✅ Начало с 0
-            timer=timer,                 # ✅ Таймер привязан
-            answers_history=[],          # ✅ Пустая история
-            selected_answers=None        # ✅ Нет выбранных
+            current_question_idx=0,
+            timer=timer,
+            answers_history=[],
+            selected_answers=None
         )
-        TEST_STATES[callback.from_user.id] = test_state  # ✅ Добавляем
+        oupds_TEST_STATES[callback.from_user.id] = test_state  # ✅ Локальный словарь
 
         # 5. ✅ ПОКАЗ "Тест начат!" + ПЕРВЫЙ вопрос
         await callback.message.delete()
@@ -160,23 +164,32 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Ошибка инициализации теста")
 
 # ========================================
-# ✅ TestMixin: обработчики вопросов
+# ✅ TestMixin: обработчики вопросов (ИСПРАВЛЕНО)
 # ========================================
-@oupds_router.callback_query(F.data.startswith("ans_"))
+@oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
-    """Переключение выбора ответа. ✅ TestMixin"""
-    await handle_answer_toggle(callback, TEST_STATES)
+    """Переключение выбора ответа. ✅ TestMixin + локальный словарь"""
+    user_id = callback.from_user.id
+    test_state = oupds_TEST_STATES.get(user_id)
+    if test_state:
+        await handle_answer_toggle(callback, test_state)
+    else:
+        await callback.answer("❌ Сессия истекла")
+    await callback.answer()
 
-@oupds_router.callback_query(F.data == "next_question")
-async def next_question(callback: CallbackQuery, state: FSMContext):
-    """Переход к следующему вопросу. ✅ TestMixin"""
-    await handle_next_question(callback, state, TEST_STATES)
+@oupds_router.callback_query(F.data == "next")
+async def next_question_handler(callback: CallbackQuery, state: FSMContext):
+    """Переход к следующему вопросу. ✅ TestMixin + локальный словарь"""
+    user_id = callback.from_user.id
+    test_state = oupds_TEST_STATES.get(user_id)
+    if test_state:
+        await handle_next_question(callback, test_state)
+    else:
+        await callback.answer("❌ Сессия истекла")
+    await callback.answer()
 
 # ========================================
-# ✅ TestMixin: стандартные вопросы (кроме первого)
+# ✅ TestMixin: стандартные вопросы
 # ========================================
-# Этот хэндлер нужен для переходов между вопросами (не для первого)
-@oupds_router.message(TestStates.answering_question)
-async def handle_question_message(message: Message, state: FSMContext):
-    """Обработка сообщений во время теста."""
-    await safe_start_question(message, state, TEST_STATES)
+# ✅ УДАЛЕНО: handle_question_message - дублирует safe_start_question из TestMixin
+# safe_start_question вызывается из library автоматически при необходимости
