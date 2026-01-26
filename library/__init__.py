@@ -37,6 +37,8 @@ from .library import (
     toggle_logic
 )
 
+from .results import calculate_test_results
+
 __all__ = [
     "Difficulty",
     "CurrentTestState",
