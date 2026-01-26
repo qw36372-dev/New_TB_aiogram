@@ -147,17 +147,20 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Ошибка инициализации")
 
 # ========================================
-# TestMixin хэндлеры + ОЧИСТКА ЧАТА ✅
+# ✅ ФИКС: TestMixin + delete ПЕРЕД логикой
 # ========================================
 @oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
+        await callback.answer()  # ✅ Убрать спиннер СНАЧАЛА
+        await callback.message.delete()  # ✅ Удаляем старое ПОСЛЕ answer()
         logger.info(f"🔄 Toggle user={user_id}")
-        await callback.message.delete()  # ✅ Удаляем старый
-        await show_question(callback.message, test_state)  # ✅ Показываем с новой клавиатурой
-    await callback.answer()
+        await handle_answer_toggle(callback, test_state)  # ✅ Логика toggle (НЕ show!)
+        await show_question(callback.message.reply_to_message or callback.message, test_state)  # ✅ Новый вопрос (фикс message_id)
+    else:
+        await callback.answer("❌ Сессия истекла")
     logger.info("✅ Toggle OK")
 
 @oupds_router.callback_query(F.data == "next")
@@ -165,10 +168,14 @@ async def next_question_handler(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
+        await callback.answer()
+        await callback.message.delete()
         logger.info(f"➡️ Next user={user_id}")
-        await callback.message.delete()  # ✅ Удаляем старый
-        await handle_next_question(callback, test_state)  # ✅ Логика + следующий show внутри
-    await callback.answer()
+        await handle_next_question(callback, test_state)  # ✅ Логика + auto-finish если конец
+        if test_state.current_question_idx < len(test_state.questions):  # ✅ Не finish
+            await show_question(callback.message.reply_to_message or callback.message, test_state)
+    else:
+        await callback.answer("❌ Сессия истекла")
     logger.info("✅ Next OK")
 
 @oupds_router.callback_query(F.data == "finish_test")
