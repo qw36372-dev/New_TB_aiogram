@@ -151,27 +151,23 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 # ========================================
 @oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
-    """Toggle + delete после edit"""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
-        logger.info(f"🔄 Toggle user={user_id} msg_id={callback.message.message_id}")
-        await handle_answer_toggle(callback, test_state)  # ✅ edit сначала
-        await callback.message.delete()  # ✅ delete ПОСЛЕ edit
-    else:
-        await callback.answer("❌ Сессия истекла")
+        logger.info(f"🔄 Toggle user={user_id}")
+        await callback.message.delete()  # ✅ Удаляем старый
+        await show_question(callback.message, test_state)  # ✅ Показываем с новой клавиатурой
     await callback.answer()
     logger.info("✅ Toggle OK")
 
 @oupds_router.callback_query(F.data == "next")
 async def next_question_handler(callback: CallbackQuery, state: FSMContext):
-    """Next + delete после handle"""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
-        logger.info(f"➡️ Next user={user_id} msg_id={callback.message.message_id}")
-        await handle_next_question(callback, test_state)  # ✅ next/show внутри
-        await callback.message.delete()  # ✅ delete старого
+        logger.info(f"➡️ Next user={user_id}")
+        await callback.message.delete()  # ✅ Удаляем старый
+        await handle_next_question(callback, test_state)  # ✅ Логика + следующий show внутри
     await callback.answer()
     logger.info("✅ Next OK")
 
