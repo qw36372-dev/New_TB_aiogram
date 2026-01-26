@@ -63,20 +63,24 @@ async def handle_answer_toggle(callback: CallbackQuery, test_state: CurrentTestS
         await callback.answer("❌ Ошибка")
 
 async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState):
-    """Переход к следующему вопросу или finish_test."""
+    """ТОЛЬКО логика next + сохранение ответа, БЕЗ show/delete"""
     try:
+        # ✅ СОХРАНИТЬ ответ перед next!
+        if test_state.selected_answers:
+            test_state.answers_history.append(test_state.selected_answers.copy())
+        test_state.selected_answers = set()
+        
         if test_state.current_question_idx + 1 >= len(test_state.questions):
-            await finish_test(callback.message, test_state)
+            await finish_test(callback.message, test_state)  # message для finish
             return
         
-        test_state.current_question_idx += 1  # ✅ idx вместо index
-        test_state.selected_answers = set()  # Сброс
-        await show_question(callback.message, test_state)
+        test_state.current_question_idx += 1
+        logger.info(f"✅ Next to {test_state.current_question_idx + 1} для {test_state.user_id}")
         await callback.answer()
     except Exception as e:
-        logger.error(f"Next question error: {e}")
-        await callback.answer("❌ Ошибка перехода")
-
+        logger.error(f"Next logic error: {e}")
+        await callback.answer("❌ Ошибка")
+        
 async def safe_start_question(message: Message, state: FSMContext, test_states: Dict[int, CurrentTestState]):
     """Защита от некорректных состояний во время теста."""
     user_id = message.from_user.id
