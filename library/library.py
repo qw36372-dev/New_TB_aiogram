@@ -47,25 +47,20 @@ async def show_first_question(message: Message, test_state: CurrentTestState):
         await message.answer("❌ Ошибка показа вопроса")
 
 async def handle_answer_toggle(callback: CallbackQuery, test_state: CurrentTestState):
-    """Toggle логика множественного выбора ответов."""
+    """ТОЛЬКО логика toggle, БЕЗ edit/delete!"""
     try:
         idx = int(callback.data.split("_")[1])
-        
         if test_state.selected_answers is None:
             test_state.selected_answers = set()
-        
         if idx in test_state.selected_answers:
             test_state.selected_answers.discard(idx)
         else:
             test_state.selected_answers.add(idx)
-        
-        await callback.message.edit_reply_markup(
-            reply_markup=get_test_keyboard(test_state.questions[test_state.current_question_idx].options, test_state.selected_answers)
-        )
-        await callback.answer()
+        logger.info(f"✅ Toggle {idx} для {test_state.user_id}, selected: {test_state.selected_answers}")
+        await callback.answer()  # Только спиннер убрать
     except Exception as e:
-        logger.error(f"Toggle answer error: {e}")
-        await callback.answer("❌ Ошибка выбора ответа")
+        logger.error(f"Toggle logic error: {e}")
+        await callback.answer("❌ Ошибка")
 
 async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState):
     """Переход к следующему вопросу или finish_test."""
