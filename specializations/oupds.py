@@ -154,11 +154,12 @@ async def toggle_answer(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
-        await callback.answer()  # ✅ Убрать спиннер СНАЧАЛА
-        await callback.message.delete()  # ✅ Удаляем старое ПОСЛЕ answer()
+        await callback.answer()
+        old_msg = callback.message  # ✅ Сохраняем для delete
+        await old_msg.delete()
         logger.info(f"🔄 Toggle user={user_id}")
-        await handle_answer_toggle(callback, test_state)  # ✅ Логика toggle (НЕ show!)
-        await show_question(callback.message.reply_to_message or callback.message, test_state)  # ✅ Новый вопрос (фикс message_id)
+        await handle_answer_toggle(callback, test_state)
+        await show_question(old_msg.reply_to_message or old_msg, test_state)  # ✅ reply_to_message для контекста
     else:
         await callback.answer("❌ Сессия истекла")
     logger.info("✅ Toggle OK")
@@ -169,11 +170,11 @@ async def next_question_handler(callback: CallbackQuery, state: FSMContext):
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
         await callback.answer()
-        await callback.message.delete()
+        old_msg = callback.message
+        await old_msg.delete()
         logger.info(f"➡️ Next user={user_id}")
-        await handle_next_question(callback, test_state)  # ✅ Логика + auto-finish если конец
-        if test_state.current_question_idx < len(test_state.questions):  # ✅ Не finish
-            await show_question(callback.message.reply_to_message or callback.message, test_state)
+        await handle_next_question(callback, test_state, old_msg.reply_to_message or old_msg)  # ✅ + message!
+        # handle_next уже покажет следующий/завершит
     else:
         await callback.answer("❌ Сессия истекла")
     logger.info("✅ Next OK")
