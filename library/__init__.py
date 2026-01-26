@@ -62,5 +62,6 @@ __all__ = [
     "safe_start_question",
     "show_question",
     "finish_test",
-    "toggle_logic"
+    "toggle_logic",
+    "calculate_test_results"
 ]
