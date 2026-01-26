@@ -151,16 +151,13 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 # ========================================
 @oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
-    """Toggle ответа + очистка"""
+    """Toggle + delete после edit"""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
         logger.info(f"🔄 Toggle user={user_id} msg_id={callback.message.message_id}")
-        await handle_answer_toggle(callback, test_state)  # ✅ Сначала edit
-        try:
-            await callback.message.delete()  # ✅ Потом delete
-        except Exception as e:
-            logger.warning(f"Delete после toggle: {e}")
+        await handle_answer_toggle(callback, test_state)  # ✅ edit сначала
+        await callback.message.delete()  # ✅ delete ПОСЛЕ edit
     else:
         await callback.answer("❌ Сессия истекла")
     await callback.answer()
