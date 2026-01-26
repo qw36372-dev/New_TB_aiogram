@@ -168,15 +168,20 @@ async def toggle_answer(callback: CallbackQuery, state: FSMContext):
 
 @oupds_router.callback_query(F.data == "next")
 async def next_question_handler(callback: CallbackQuery, state: FSMContext):
-    """Следующий вопрос + очистка."""
+    """Следующий вопрос + очистка"""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if test_state:
-        await callback.message.delete()  # ✅ Удаляем старый вопрос
-        await handle_next_question(callback, test_state)
+        logger.info(f"➡️ Next user={user_id} msg_id={callback.message.message_id}")
+        await handle_next_question(callback, test_state)  # ✅ Сначала next
+        try:
+            await callback.message.delete()  # ✅ Потом delete
+        except Exception as e:
+            logger.warning(f"Delete после next: {e}")
     else:
         await callback.answer("❌ Сессия истекла")
     await callback.answer()
+    logger.info("✅ Next OK")
 
 @oupds_router.callback_query(F.data == "finish_test")
 async def finish_test_handler(callback: CallbackQuery, state: FSMContext):
