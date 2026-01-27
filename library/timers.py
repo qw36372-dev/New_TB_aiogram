@@ -25,12 +25,12 @@ class TestTimer:
         self.is_active = False
         self.timeout_callback: Optional[Callable] = None
     
-    async def start(self, timeout_callback: Callable):
-        """Запуск таймера."""
-        self.timeout_callback = timeout_callback
+    async def start(self, timeout_callback=None):  # ✅ Опциональный!
+        """Запуск таймера с опциональным callback."""
+        self.timeout_callback = timeout_callback  # Сохраняем для _countdown()
         self.start_time = asyncio.get_event_loop().time()
         self.is_active = True
-        self.task = asyncio.create_task(self._countdown())
+        self.task = asyncio.create_task(self._countdown())  # Ваш оригинальный countdown
     
     async def _countdown(self):
         """Основной цикл таймера."""
