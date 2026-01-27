@@ -31,6 +31,8 @@ show_question_next = lambda *a, **kw: _lazy_import('show_question_next')(*a, **k
 finish_test = lambda *a, **kw: _lazy_import('finish_test')(*a, **kw)
 calculate_test_results = lambda *a, **kw: _lazy_import('calculate_test_results')(*a, **kw)
 toggle_logic = lambda *a, **kw: _lazy_import('toggle_logic')(*a, **kw)
+safe_start_question = lambda *a, **kw: _lazy_import('safe_start_question')(*a, **kw)
+
 
 # ✅ Сертификат в finish_test()
 
@@ -40,5 +42,6 @@ __all__ = [
     "get_main_keyboard", "get_difficulty_keyboard", "get_test_keyboard", "get_finish_keyboard",
     "TestStates", "AntiSpamMiddleware",
     "show_first_question", "handle_answer_toggle", "handle_next_question", "show_question_next",
-    "finish_test", "toggle_logic", "calculate_test_results"
+    "finish_test", "toggle_logic", "calculate_test_results",
+    "safe_start_question"
 ]
