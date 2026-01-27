@@ -1,9 +1,3 @@
-"""
-Роутер ООУПДС — ✅ PROD: 30 вопросов, автоудаление ПРИ "Далее", результаты+сертификат.
-✅ ФИКС: delete ТОЛЬКО в next_handler (toggle — edit_markup)
-✅ ФИКС: Импорты + finish_test_handler
-✅ Чистый чат + FSM данные для Pydantic
-"""
 import asyncio
 import logging
 from typing import Dict
@@ -17,7 +11,7 @@ from library import (
     TestStates, get_main_keyboard, get_difficulty_keyboard, load_questions_for_specialization,
     Difficulty, CurrentTestState, TestTimer, UserData, AntiSpamMiddleware,
     show_first_question, handle_answer_toggle, handle_next_question, 
-    safe_start_question, finish_test, calculate_test_results  # Все импорты
+    finish_test, calculate_test_results
 )
 from assets.logo import get_logo_text
 
@@ -29,7 +23,6 @@ oupds_router.message.middleware(AntiSpamMiddleware())
 oupds_TEST_STATES: Dict[int, CurrentTestState] = {}
 
 async def timeout_callback(bot, chat_id: int, user_id: int):
-    """Таймаут."""
     try:
         await bot.send_message(chat_id, "⏰ <b>Время вышло!</b>\nТест не сдан. /start", parse_mode="HTML")
     except Exception as e:
@@ -37,9 +30,7 @@ async def timeout_callback(bot, chat_id: int, user_id: int):
     finally:
         oupds_TEST_STATES.pop(user_id, None)
 
-# ========================================
-# FSM: Сбор данных (unchanged)
-# ========================================
+# FSM сбор данных (unchanged)
 @oupds_router.callback_query(F.data == "oupds")
 async def start_oupds_test(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
@@ -72,9 +63,6 @@ async def process_department(message: Message, state: FSMContext):
     await state.set_state(TestStates.answering_question)
     await message.answer("⚙️ Сложность:", reply_markup=get_difficulty_keyboard())
 
-# ========================================
-# ✅ Инициализация теста
-# ========================================
 @oupds_router.callback_query(F.data.startswith("diff_"))
 async def select_difficulty(callback: CallbackQuery, state: FSMContext):
     try:
@@ -88,9 +76,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         user_data = UserData(**data, difficulty=difficulty)
 
         timer = TestTimer(callback.bot, callback.message.chat.id, callback.from_user.id, difficulty)
-        await timer.start(lambda: asyncio.create_task(
-            timeout_callback(callback.bot, callback.message.chat.id, callback.from_user.id)
-        ))
+        await timer.start()  # ✅ Фикс: прямой вызов без lambda
 
         test_state = CurrentTestState(
             user_id=callback.from_user.id, questions=questions, current_question_idx=0,
@@ -107,53 +93,38 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Difficulty error: {e}")
         await callback.answer("❌ Инициализация")
 
-# ========================================
-# ✅ ТОГГЛ: Выбор ответа (EDIT, НЕ delete)
-# ========================================
 @oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
-    """✅ Выбор: меняем markup на 'Далее' (НЕ delete!)."""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if not test_state:
         return await callback.answer("❌ Сессия истекла")
 
-    await callback.answer("Выбрано ✓")
-
-    # ✅ TestMixin toggle
     await handle_answer_toggle(callback, test_state)
 
-    # ✅ Меняем клавиатуру: только "Далее"
     next_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➡️ Далее", callback_data="next")]
     ])
-    await callback.message.edit_reply_markup(reply_markup=next_markup)  # Остаётся в чате!
-
+    await callback.message.edit_reply_markup(reply_markup=next_markup)
+    await callback.answer("Выбрано ✓")
     logger.info(f"Toggle {user_id}")
 
-# ========================================
-# ✅ NEXT: Удаляем + следующий вопрос
-# ========================================
 @oupds_router.callback_query(F.data == "next")
 async def next_question_handler(callback: CallbackQuery, state: FSMContext):
-    """✅ Delete ТОЛЬКО здесь + следующий."""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if not test_state:
         return await callback.answer("❌ Сессия истекла")
 
-    await callback.message.delete()  # ✅ Удаляем текущий вопрос
+    await callback.message.delete()  # ✅ Только здесь delete
 
-    # ✅ TestMixin: обработка next (покажет следующий или finish)
-    await handle_next_question(callback, test_state)
+    data = await state.get_data()
+    user_data = UserData(**data, difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC)
+    await handle_next_question(callback, test_state, user_data)  # ✅ + user_data
     logger.info(f"Next {user_id}")
 
-# ========================================
-# ✅ FINISH: Результаты + сертификат
-# ========================================
 @oupds_router.callback_query(F.data == "finish_test")
 async def finish_test_handler(callback: CallbackQuery, state: FSMContext):
-    """✅ Результаты + сертификат + очистка."""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if not test_state:
@@ -162,15 +133,14 @@ async def finish_test_handler(callback: CallbackQuery, state: FSMContext):
     try:
         await callback.message.delete()
         data = await state.get_data()
-        user_data = UserData(**data, difficulty=test_state.questions[0].difficulty)
-        results = calculate_test_results(test_state)
-        await finish_test(callback.message, test_state, user_data, results)  # Генерирует сертификат
+        user_data = UserData(**data, difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC)
+        results = calculate_test_results(test_state)  # ✅ Вызов
+        await finish_test(callback.message, test_state, user_data, results)
         
-        del oupds_TEST_STATES[user_id]
+        oupds_TEST_STATES.pop(user_id, None)
         await state.clear()
         logger.info(f"✅ Завершён {user_id}")
     except Exception as e:
         logger.error(f"Finish error: {e}")
         await callback.answer("❌ Завершение")
-    
     await callback.answer()
