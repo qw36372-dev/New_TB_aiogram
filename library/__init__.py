@@ -24,6 +24,7 @@ def _lazy_import(name):
     from .library import __dict__ as lib_dict
     return lib_dict[name]
 
+safe_start_question = lambda *a, **kw: _lazy_import('safe_start_question')(*a, **kw)
 show_first_question = lambda *a, **kw: _lazy_import('show_first_question')(*a, **kw)
 handle_answer_toggle = lambda *a, **kw: _lazy_import('handle_answer_toggle')(*a, **kw)
 handle_next_question = lambda *a, **kw: _lazy_import('handle_next_question')(*a, **kw)
@@ -31,8 +32,6 @@ show_question_next = lambda *a, **kw: _lazy_import('show_question_next')(*a, **k
 finish_test = lambda *a, **kw: _lazy_import('finish_test')(*a, **kw)
 calculate_test_results = lambda *a, **kw: _lazy_import('calculate_test_results')(*a, **kw)
 toggle_logic = lambda *a, **kw: _lazy_import('toggle_logic')(*a, **kw)
-safe_start_question = lambda *a, **kw: _lazy_import('safe_start_question')(*a, **kw)
-
 
 # ✅ Сертификат в finish_test()
 
