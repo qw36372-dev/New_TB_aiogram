@@ -150,8 +150,22 @@ def calculate_test_results(test_state: CurrentTestState) -> TestResult:
 
 def toggle_logic(selected: Set[int], total: int) -> bool:
     return len(selected) > 0
+async def safe_start_question(message: Message, state: FSMContext, test_states: Dict[int, CurrentTestState] = None):
+    """✅ Заглушка для старых роутеров: FSM safe + первый вопрос."""
+    try:
+        user_id = message.from_user.id
+        test_state = test_states.get(user_id) if test_states else None
+        if not test_state:
+            await message.answer("❌ Сессия истекла. /start")
+            return
+        await show_first_question(message, test_state)
+        logger.info(f"✅ Safe start вопрос для {user_id}")
+    except Exception as e:
+        logger.error(f"Safe start error: {e}")
+        await message.answer("❌ Ошибка safe_start")
 
 __all__ = [
     "show_first_question", "show_question", "handle_answer_toggle", "handle_next_question",
-    "show_question_next", "finish_test", "calculate_test_results", "toggle_logic"
+    "show_question_next", "finish_test", "calculate_test_results", "toggle_logic",
+    "safe_start_question"
 ]
