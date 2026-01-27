@@ -1,11 +1,9 @@
 """
 Library: общие функции для всех тестовых модулей.
-✅ Замена TestMixin из test_mixin.py — 6 функций для FSM-тестов.
+✅ Замена TestMixin — 6 функций для FSM-тестов.
 ✅ Production-ready: статистика, PDF-сертификат, таймеры, toggle-ответы.
-✅ ФИКС цикла: ЛОКАЛЬНЫЕ импорты (без from library import)
-Использование: from library import show_first_question, finish_test
+✅ ФИКС: синтаксис finish_test, handle_next_question + user_data, show_question_next.
 """
-
 import asyncio
 import logging
 import os
@@ -15,7 +13,6 @@ from aiogram.fsm.context import FSMContext
 
 logger = logging.getLogger(__name__)
 
-# ✅ ФИКС: ЛОКАЛЬНЫЕ импорты БЕЗ цикла (from .models, НЕ from library)
 from .models import (
     CurrentTestState, UserData, TestResult, Question, Difficulty
 )
@@ -25,31 +22,36 @@ from .stats import StatsManager
 from .certificates import generate_certificate
 
 async def show_first_question(message: Message, test_state: CurrentTestState):
-    """✅ ПЕРВЫЙ вопрос БЕЗ проверок сессии."""
+    """✅ ПЕРВЫЙ вопрос."""
     try:
         if not test_state.questions:
-            await message.answer("❌ Нет вопросов для теста")
+            await message.answer("❌ Нет вопросов")
             return
-        q = test_state.questions[test_state.current_question_idx]
-        
-        time_left_seconds = test_state.timer.remaining_seconds()
-        time_left_str = test_state.timer.remaining_time()
-        
-        markup = get_test_keyboard(q.options, test_state.selected_answers or set())
-        await message.answer(
-            f"⏰ Осталось: {time_left_str}\n\n"
-            f"<b>Вопрос {test_state.current_question_idx + 1}/{len(test_state.questions)}:</b>\n\n"
-            f"{q.question}",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        logger.info(f"✅ Первый вопрос показан для {test_state.user_id}")
+        await _show_question(message, test_state, is_first=True)
+        logger.info(f"✅ Первый вопрос {test_state.user_id}")
     except Exception as e:
-        logger.error(f"Show first question error: {e}")
-        await message.answer("❌ Ошибка показа вопроса")
+        logger.error(f"Show first error: {e}")
+        await message.answer("❌ Ошибка показа")
+
+async def show_question(message: Message, test_state: CurrentTestState):
+    """✅ ОБЫЧНЫЙ вопрос (аналог show_first_question)."""
+    await _show_question(message, test_state, is_first=False)
+
+async def _show_question(message: Message, test_state: CurrentTestState, is_first: bool = False):
+    """Внутренняя: показ вопроса."""
+    q = test_state.questions[test_state.current_question_idx]
+    time_left_str = test_state.timer.remaining_time()
+    markup = get_test_keyboard(q.options, test_state.selected_answers or set())
+    await message.answer(
+        f"⏰ Осталось: {time_left_str}\n\n"
+        f"<b>Вопрос {test_state.current_question_idx + 1}/{len(test_state.questions)}:</b>\n\n"
+        f"{q.question}",
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
 
 async def handle_answer_toggle(callback: CallbackQuery, test_state: CurrentTestState):
-    """ТОЛЬКО логика toggle, БЕЗ edit/delete/show!"""
+    """ТОЛЬКО toggle логика."""
     try:
         idx = int(callback.data.split("_")[1])
         if test_state.selected_answers is None:
@@ -58,14 +60,13 @@ async def handle_answer_toggle(callback: CallbackQuery, test_state: CurrentTestS
             test_state.selected_answers.discard(idx)
         else:
             test_state.selected_answers.add(idx)
-        logger.info(f"✅ Toggle {idx} для {test_state.user_id}, selected: {test_state.selected_answers}")
-        await callback.answer()
+        logger.info(f"Toggle {idx} для {test_state.user_id}: {test_state.selected_answers}")
     except Exception as e:
         logger.error(f"Toggle logic error: {e}")
-        await callback.answer("❌ Ошибка")
+    await callback.answer()
 
-async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState):
-    """✅ ФИКС: НЕ нужен message — используем callback.message.chat."""
+async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState, user_data: UserData = None):
+    """✅ Next: сохраняем + следующий или finish."""
     try:
         # Сохраняем ответ
         if test_state.selected_answers:
@@ -73,74 +74,84 @@ async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestS
         test_state.selected_answers = set()
         
         if test_state.current_question_idx + 1 >= len(test_state.questions):
-            # ✅ Создаём Message из callback для finish_test
-            chat = callback.message.chat
-            dummy_msg = Message(chat=chat, text="", message_id=callback.message.message_id, from_user=callback.from_user)
-            await finish_test(dummy_msg, test_state)
+            # Finish
+            dummy_msg = Message(chat=callback.message.chat, text="", 
+                              message_id=callback.message.message_id, from_user=callback.from_user)
+            await finish_test(dummy_msg, test_state, user_data)
             return
         
         test_state.current_question_idx += 1
-        await show_question_next(callback)  # Новая helper
+        await show_question_next(callback, test_state)
         await callback.answer()
     except Exception as e:
         logger.error(f"Next error: {e}")
 
-async def show_question_next(callback: CallbackQuery):
-    """Helper: show_question для callback."""
-    user_id = callback.from_user.id
-    # Получаем test_state из глобального? Или передавайте как param!
-    # В oupds: oupds_TEST_STATES.get(user_id)
-    # TODO: Передавайте test_state в handler!
-    logger.info("Show next after delete")
+async def show_question_next(callback: CallbackQuery, test_state: CurrentTestState):
+    """✅ Helper: следующий вопрос из callback."""
+    try:
+        await show_question(callback.message, test_state)
+        logger.info(f"✅ Показан вопрос {test_state.current_question_idx} для {test_state.user_id}")
+    except Exception as e:
+        logger.error(f"Show next error: {e}")
 
-async def finish_test(message: Message, test_state: CurrentTestState, user_ UserData = None, results: TestResult = None):
-    """✅ ФИКС: user_data из FSM или param."""
+async def finish_test(message: Message, test_state: CurrentTestState, user_data: UserData = None, results: TestResult = None):
+    """✅ Результаты + сертификат. ✅ ФИКС: user_data: UserData."""
     try:
         user_id = test_state.user_id
-        elapsed_str = await test_state.timer.stop()
+        elapsed_str = test_state.timer.stop()
 
-        correct = sum(1 for i, q in enumerate(test_state.questions) 
-                     if test_state.answers_history[i] & set(q.correct_answers) if i < len(test_state.answers_history))
-        total = len(test_state.questions)
-        percentage = (correct / total) * 100
-        grade = "Отлично" if percentage >= 80 else "Хорошо" if percentage >= 60 else "Удовл."
-
-        # ✅ UserData из test_state или param
-        if not user_
-            user_data = UserData(
-                full_name="Не указано", position="Не указано", department="Не указано",
-                specialization="oupds", difficulty=test_state.questions[0].difficulty
-            )
-
-        test_result = TestResult(user_data=user_data, correct_count=correct, total_questions=total,
+        # Расчет результатов (если нет results)
+        if results is None:
+            correct = sum(1 for i, q in enumerate(test_state.questions) 
+                         if i < len(test_state.answers_history) and 
+                         test_state.answers_history[i] & set(q.correct_answers))
+            total = len(test_state.questions)
+            percentage = (correct / total) * 100 if total else 0
+            grade = "Отлично" if percentage >= 80 else "Хорошо" if percentage >= 60 else "Удовл."
+            results = TestResult(user_data or UserData(...), correct_count=correct, total_questions=total,
                                 grade=grade, percentage=percentage, elapsed_time=elapsed_str)
 
-        StatsManager.save_result(test_result)
-        cert_path = generate_certificate(test_result)
+        if not user_data:
+            user_data = UserData(
+                full_name="Не указано", position="Не указано", department="Не указано",
+                specialization="oupds", difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC
+            )
+
+        StatsManager.save_result(results)
+        cert_path = generate_certificate(results)
 
         await message.answer(
-            f"✅ <b>Тест завершён!</b>\nПравильных: {correct}/{total} ({percentage:.1f}%)\n"
-            f"Оценка: {grade}\nВремя: {elapsed_str}",
+            f"✅ <b>Тест завершён!</b>\nПравильных: {results.correct_count}/{results.total_questions} ({results.percentage:.1f}%)\n"
+            f"Оценка: {results.grade}\nВремя: {results.elapsed_time}",
             reply_markup=get_finish_keyboard(), parse_mode="HTML"
         )
         if cert_path and os.path.exists(cert_path):
             await message.answer_document(FSInputFile(cert_path))
             os.remove(cert_path)
 
-        logger.info(f"✅ Завершён {user_id}: {percentage:.1f}%")
+        logger.info(f"✅ Завершён {user_id}: {results.percentage:.1f}%")
     except Exception as e:
         logger.error(f"Finish error: {e}")
         await message.answer("❌ Ошибка завершения")
+
+def calculate_test_results(test_state: CurrentTestState) -> TestResult:
+    """✅ Расчет результатов для внешнего вызова."""
+    # Аналог логики из finish_test
+    correct = sum(1 for i, q in enumerate(test_state.questions) 
+                 if i < len(test_state.answers_history) and 
+                 test_state.answers_history[i] & set(q.correct_answers))
+    total = len(test_state.questions)
+    percentage = (correct / total) * 100 if total else 0
+    grade = "Отлично" if percentage >= 80 else "Хорошо" if percentage >= 60 else "Удовл."
+    # Dummy user_data
+    user_data = UserData(full_name="Тест", position="", department="", specialization="oupds", difficulty=Difficulty.BASIC)
+    return TestResult(user_data=user_data, correct_count=correct, total_questions=total,
+                      grade=grade, percentage=percentage, elapsed_time="00:00")
 
 def toggle_logic(selected: Set[int], total: int) -> bool:
     return len(selected) > 0
 
 __all__ = [
-    "show_first_question",
-    "handle_answer_toggle",
-    "handle_next_question",
-    "safe_start_question",
-    "show_question",
-    "finish_test",
-    "toggle_logic"
+    "show_first_question", "show_question", "handle_answer_toggle", "handle_next_question",
+    "show_question_next", "finish_test", "calculate_test_results", "toggle_logic"
 ]
