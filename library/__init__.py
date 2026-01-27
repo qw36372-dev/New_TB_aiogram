@@ -1,67 +1,45 @@
 """
-Пакет library — закрытая библиотека вопросов, утилиты, модели.
-Импортирует все ключевые компоненты для удобства.
+✅ Library: базовые импорты БЕЗ цикла.
+Функции library — ленивые (по требованию).
 """
 
-# Сначала базовые импорты (без зависимостей)
+# Базовые (без зависимостей)
 from .enum import Difficulty
 from .models import (
-    CurrentTestState,
-    Question,
-    AnswerOption,
-    UserData,
-    TestResult
+    CurrentTestState, Question, AnswerOption, UserData, TestResult
 )
 from .timers import TestTimer
-
-# Остальные импорты
 from .question_loader import load_questions_for_specialization
 from .stats import StatsManager
-from .certificates import generate_certificate
 from .keyboards import (
-    get_main_keyboard,
-    get_difficulty_keyboard,
-    get_test_keyboard,
-    get_finish_keyboard
+    get_main_keyboard, get_difficulty_keyboard, get_test_keyboard, get_finish_keyboard
 )
 from .states import TestStates
 from .anti_spam import AntiSpamMiddleware
 
-from .library import (
-    show_first_question, 
-    handle_answer_toggle, 
-    handle_next_question,
-    safe_start_question, 
-    show_question, 
-    finish_test, 
-    toggle_logic
-)
+# ✅ Ленивые прокси для library функций (фикс цикла)
+def _lazy_import(name):
+    """Helper для ленивого импорта."""
+    from .library import __dict__ as lib_dict
+    return lib_dict[name]
 
-from .results import calculate_test_results
+show_first_question = lambda *a, **kw: _lazy_import('show_first_question')(*a, **kw)
+handle_answer_toggle = lambda *a, **kw: _lazy_import('handle_answer_toggle')(*a, **kw)
+handle_next_question = lambda *a, **kw: _lazy_import('handle_next_question')(*a, **kw)
+safe_start_question = lambda *a, **kw: _lazy_import('safe_start_question')(*a, **kw)
+show_question = lambda *a, **kw: _lazy_import('show_question')(*a, **kw)
+finish_test = lambda *a, **kw: _lazy_import('finish_test')(*a, **kw)
+toggle_logic = lambda *a, **kw: _lazy_import('toggle_logic')(*a, **kw)
+calculate_test_results = lambda *a, **kw: _lazy_import('calculate_test_results')(*a, **kw)
+
+# ✅ Сертификат генерируется внутри finish_test() → certificates.generate_certificate()
 
 __all__ = [
-    "Difficulty",
-    "CurrentTestState",
-    "Question",
-    "AnswerOption",
-    "UserData",
-    "TestResult",
-    "TestTimer",
-    "load_questions_for_specialization",
-    "StatsManager",
-    "generate_certificate",
-    "get_main_keyboard",
-    "get_difficulty_keyboard",
-    "get_test_keyboard",
-    "get_finish_keyboard",
-    "TestStates",
-    "AntiSpamMiddleware",
-    "show_first_question",
-    "handle_answer_toggle", 
-    "handle_next_question",
-    "safe_start_question",
-    "show_question",
-    "finish_test",
-    "toggle_logic",
+    "Difficulty", "CurrentTestState", "Question", "UserData", "TestResult",
+    "TestTimer", "load_questions_for_specialization", "StatsManager",
+    "get_main_keyboard", "get_difficulty_keyboard", "get_test_keyboard", "get_finish_keyboard",
+    "TestStates", "AntiSpamMiddleware",
+    "show_first_question", "handle_answer_toggle", "handle_next_question",
+    "safe_start_question", "show_question", "finish_test", "toggle_logic",
     "calculate_test_results"
 ]
