@@ -75,8 +75,9 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         data = await state.get_data()
         user_data = UserData(**data, difficulty=difficulty)
 
+        # ✅ ФИКС: Передаем timeout_callback напрямую
         timer = TestTimer(callback.bot, callback.message.chat.id, callback.from_user.id, difficulty)
-        await timer.start()  # ✅ Фикс: прямой вызов без lambda
+        await timer.start(timeout_callback)  # ← Аргумент!
 
         test_state = CurrentTestState(
             user_id=callback.from_user.id, questions=questions, current_question_idx=0,
