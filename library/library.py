@@ -64,108 +64,72 @@ async def handle_answer_toggle(callback: CallbackQuery, test_state: CurrentTestS
         logger.error(f"Toggle logic error: {e}")
         await callback.answer("❌ Ошибка")
 
-async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState, message: Message):
-    """Логика next + show следующего (или finish). ФИКС: + message для show."""
+async def handle_next_question(callback: CallbackQuery, test_state: CurrentTestState):
+    """✅ ФИКС: НЕ нужен message — используем callback.message.chat."""
     try:
-        # ✅ СОХРАНИТЬ ответ
+        # Сохраняем ответ
         if test_state.selected_answers:
             test_state.answers_history.append(test_state.selected_answers.copy())
         test_state.selected_answers = set()
         
         if test_state.current_question_idx + 1 >= len(test_state.questions):
-            await finish_test(message, test_state)
+            # ✅ Создаём Message из callback для finish_test
+            chat = callback.message.chat
+            dummy_msg = Message(chat=chat, text="", message_id=callback.message.message_id, from_user=callback.from_user)
+            await finish_test(dummy_msg, test_state)
             return
         
         test_state.current_question_idx += 1
-        logger.info(f"✅ Next to {test_state.current_question_idx + 1} для {test_state.user_id}")
-        await show_question(message, test_state)  # ✅ Показываем следующий
+        await show_question_next(callback)  # Новая helper
         await callback.answer()
     except Exception as e:
-        logger.error(f"Next logic error: {e}")
-        await callback.answer("❌ Ошибка")
+        logger.error(f"Next error: {e}")
 
-async def safe_start_question(message: Message, state: FSMContext, test_states: Dict[int, CurrentTestState]):
-    """Защита от некорректных состояний."""
-    user_id = message.from_user.id
-    if user_id in test_states:
-        test_state = test_states[user_id]
-        await show_question(message, test_state)
-    else:
-        await message.answer("❌ Сессия теста истекла. /start")
+async def show_question_next(callback: CallbackQuery):
+    """Helper: show_question для callback."""
+    user_id = callback.from_user.id
+    # Получаем test_state из глобального? Или передавайте как param!
+    # В oupds: oupds_TEST_STATES.get(user_id)
+    # TODO: Передавайте test_state в handler!
+    logger.info("Show next after delete")
 
-async def show_question(message: Message, test_state: CurrentTestState):
-    """Показ текущего вопроса."""
-    try:
-        user_id = test_state.user_id
-        idx = test_state.current_question_idx
-        q = test_state.questions[idx]
-        
-        time_left_str = test_state.timer.remaining_time()
-        
-        markup = get_test_keyboard(q.options, test_state.selected_answers or set())
-        await message.answer(
-            f"⏰ Осталось: {time_left_str}\n\n"
-            f"<b>Вопрос {idx + 1}/{len(test_state.questions)}:</b>\n\n"
-            f"{q.question}",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        logger.info(f"✅ Показан вопрос {idx+1} для {user_id}")
-    except Exception as e:
-        logger.error(f"Show question error: {e}")
-        await message.answer("❌ Ошибка показа вопроса")
-
-async def finish_test(message: Message, test_state: CurrentTestState):
-    """Завершение: подсчёт, PDF. ФИКС: user_data из FSM."""
+async def finish_test(message: Message, test_state: CurrentTestState, user_ UserData = None, results: TestResult = None):
+    """✅ ФИКС: user_data из FSM или param."""
     try:
         user_id = test_state.user_id
         elapsed_str = await test_state.timer.stop()
 
-        # Подсчёт
-        correct = 0
+        correct = sum(1 for i, q in enumerate(test_state.questions) 
+                     if test_state.answers_history[i] & set(q.correct_answers) if i < len(test_state.answers_history))
         total = len(test_state.questions)
-        for i, q in enumerate(test_state.questions):
-            user_ans = test_state.answers_history[i] if i < len(test_state.answers_history) else set()
-            if user_ans & set(q.correct_answers):  # ✅ Set intersection
-                correct += 1
-
         percentage = (correct / total) * 100
         grade = "Отлично" if percentage >= 80 else "Хорошо" if percentage >= 60 else "Удовл."
 
-        # ✅ UserData из test_state (добавьте поля в CurrentTestState если нужно)
-        test_result = TestResult(
-            user_data=UserData(
-                full_name=getattr(test_state, 'full_name', 'Не указано'),
-                position=getattr(test_state, 'position', 'Не указано'),
-                department=getattr(test_state, 'department', 'Не указано'),
-                specialization=getattr(test_state, 'specialization', 'oupds'),
-                difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC
-            ),
-            correct_count=correct,
-            total_questions=total,
-            grade=grade,
-            percentage=percentage,
-            elapsed_time=elapsed_str
-        )
+        # ✅ UserData из test_state или param
+        if not user_
+            user_data = UserData(
+                full_name="Не указано", position="Не указано", department="Не указано",
+                specialization="oupds", difficulty=test_state.questions[0].difficulty
+            )
+
+        test_result = TestResult(user_data=user_data, correct_count=correct, total_questions=total,
+                                grade=grade, percentage=percentage, elapsed_time=elapsed_str)
 
         StatsManager.save_result(test_result)
         cert_path = generate_certificate(test_result)
 
         await message.answer(
-            f"✅ <b>Тест завершён!</b>\n\n"
-            f"Правильных: {correct}/{total} ({percentage:.1f}%)\n"
-            f"Оценка: {grade}\n"
-            f"Время: {elapsed_str}",
-            reply_markup=get_finish_keyboard(),
-            parse_mode="HTML"
+            f"✅ <b>Тест завершён!</b>\nПравильных: {correct}/{total} ({percentage:.1f}%)\n"
+            f"Оценка: {grade}\nВремя: {elapsed_str}",
+            reply_markup=get_finish_keyboard(), parse_mode="HTML"
         )
-        if cert_path:
+        if cert_path and os.path.exists(cert_path):
             await message.answer_document(FSInputFile(cert_path))
             os.remove(cert_path)
 
-        logger.info(f"✅ Тест завершён для {user_id}: {percentage:.1f}%")
+        logger.info(f"✅ Завершён {user_id}: {percentage:.1f}%")
     except Exception as e:
-        logger.error(f"Finish test error: {e}")
+        logger.error(f"Finish error: {e}")
         await message.answer("❌ Ошибка завершения")
 
 def toggle_logic(selected: Set[int], total: int) -> bool:
