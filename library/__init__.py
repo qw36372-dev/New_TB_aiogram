@@ -1,46 +1,50 @@
 """
-✅ Library: базовые импорты БЕЗ цикла.
-Функции library — ленивые (по требованию).
-✅ ФИКС: Убраны ссылки на несуществующие функции.
+library/__init__.py: Все импорты + middlewares.
+Production: expose для test_bot_main/specializations.
 """
+from typing import Optional
+import asyncio
+import logging
 
-# Базовые (без зависимостей)
-from .enum import Difficulty
-from .models import (
-    CurrentTestState, Question, AnswerOption, UserData, TestResult
-)
-from .timers import TestTimer
+logger = logging.getLogger(__name__)
+
+# Core models/states/timer
+from .models import Question, CurrentTestState, Difficulty, TestStates
 from .question_loader import load_questions_for_specialization
-from .stats import StatsManager
-from .keyboards import (
-    get_main_keyboard, get_difficulty_keyboard, get_test_keyboard, get_finish_keyboard
+from .timers import TestTimer, create_timer
+from .library import (  # Core logic
+    _show_question, handle_answer_toggle, handle_next_question, finish_test
 )
-from .states import TestStates
-from .anti_spam import AntiSpamMiddleware
 
-# ✅ Ленивые прокси для library функций (только существующие)
-def _lazy_import(name):
-    """Helper для ленивого импорта."""
-    from .library import __dict__ as lib_dict
-    return lib_dict[name]
+# Keyboards lazy
+def get_main_keyboard(): from .keyboards import get_main_keyboard; return get_main_keyboard()
+def get_difficulty_keyboard(): from .keyboards import get_difficulty_keyboard; return get_difficulty_keyboard()
+def get_test_keyboard(options, selected): from .keyboards import get_test_keyboard; return get_test_keyboard(options, selected)
+def get_finish_keyboard(): from .keyboards import get_finish_keyboard; return get_finish_keyboard()
 
-safe_start_question = lambda *a, **kw: _lazy_import('safe_start_question')(*a, **kw)
-show_first_question = lambda *a, **kw: _lazy_import('show_first_question')(*a, **kw)
-handle_answer_toggle = lambda *a, **kw: _lazy_import('handle_answer_toggle')(*a, **kw)
-handle_next_question = lambda *a, **kw: _lazy_import('handle_next_question')(*a, **kw)
-show_question_next = lambda *a, **kw: _lazy_import('show_question_next')(*a, **kw)
-finish_test = lambda *a, **kw: _lazy_import('finish_test')(*a, **kw)
-calculate_test_results = lambda *a, **kw: _lazy_import('calculate_test_results')(*a, **kw)
-toggle_logic = lambda *a, **kw: _lazy_import('toggle_logic')(*a, **kw)
+# Fallbacks
+def safe_timer_remaining(timer): 
+    try: return timer.remaining_time() if hasattr(timer, 'remaining_time') else "∞"
+    except: return "∞"
 
-# ✅ Сертификат в finish_test()
+def safe_timer_stop(timer):
+    try: getattr(timer, 'stop', lambda: None)()
+    except: pass
+
+# Middlewares
+from .middlewares import AntiSpamMiddleware, ErrorHandlerMiddleware
+
+# AntiSpam stub (legacy, используй middlewares)
+class AntiSpamMiddleware:
+    async def __call__(self, handler, event, data):
+        from .middlewares import AntiSpamMiddleware as Real
+        return await Real()(handler, event, data)
 
 __all__ = [
-    "Difficulty", "CurrentTestState", "Question", "UserData", "TestResult",
-    "TestTimer", "load_questions_for_specialization", "StatsManager",
+    "TestStates", "Difficulty", "Question", "CurrentTestState",
+    "load_questions_for_specialization", "create_timer",
     "get_main_keyboard", "get_difficulty_keyboard", "get_test_keyboard", "get_finish_keyboard",
-    "TestStates", "AntiSpamMiddleware",
-    "show_first_question", "handle_answer_toggle", "handle_next_question", "show_question_next",
-    "finish_test", "toggle_logic", "calculate_test_results",
-    "safe_start_question"
+    "_show_question", "handle_answer_toggle", "handle_next_question", "finish_test",
+    "safe_timer_remaining", "safe_timer_stop",
+    "AntiSpamMiddleware", "ErrorHandlerMiddleware"
 ]
