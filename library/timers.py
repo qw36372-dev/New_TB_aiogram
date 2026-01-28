@@ -1,72 +1,49 @@
-"""
-Управление таймерами теста по уровню сложности.
-Persistent: total_seconds от start_time, нет drift.
-remaining_time() → "MM:SS" для _show_question.
-"""
 import asyncio
 import logging
-from typing import Optional, Callable
-from datetime import timedelta
+from concurrent.futures import ThreadPoolExecutor
 
-from config.settings import settings
-from .models import Difficulty
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-logger = logging.getLogger(__name__)
+class Timer:
+    def __init__(self, interval, callback):
+        self.interval = interval
+        self.callback = callback
+        self._loop = asyncio.get_event_loop()  # Ensure loop is obtained in a thread-safe way
+        self._stop_event = asyncio.Event()
+        self._task = None
 
-class TestTimer:
-    """Таймер теста."""
-    
-    def __init__(self, total_minutes: int):
-        self.total_seconds = total_minutes * 60
-        self.start_time: Optional[float] = None
-        self.timeout_callback: Optional[Callable] = None
-        self.task: Optional[asyncio.Task] = None
-    
-    async def start(self, timeout_callback: Optional[Callable] = None) -> None:
-        """Запуск таймера + task для timeout."""
-        self.timeout_callback = timeout_callback
-        self.start_time = asyncio.get_event_loop().time()
-        
-        async def countdown():
-            while self.remaining_seconds() > 0:
-                await asyncio.sleep(1)
-            await self._on_timeout()
-        
-        self.task = asyncio.create_task(countdown())
-        logger.info(f"Timer start: {self.total_seconds}s")
-    
-    def stop(self) -> None:
-        """Graceful stop."""
-        if self.task and not self.task.done():
-            self.task.cancel()
-            try:
-                asyncio.get_event_loop().run_until_complete(self.task)
-            except asyncio.CancelledError:
-                pass
-        self.start_time = None
-        logger.info("Timer stopped")
-    
-    def remaining_seconds(self) -> int:
-        """Остаток секунд."""
-        if not self.start_time:
-            return self.total_seconds
-        elapsed = asyncio.get_event_loop().time() - self.start_time
-        return max(0, int(self.total_seconds - elapsed))
-    
-    def remaining_time(self) -> str:
-        """'MM:SS' для UI."""
-        secs = self.remaining_seconds()
-        mins, s = divmod(secs, 60)
-        return f"{mins:02d}:{s:02d}"
-    
-    async def _on_timeout(self) -> None:
-        """Timeout: auto finish."""
-        logger.warning("Test timeout!")
-        if self.timeout_callback:
-            await self.timeout_callback()
+    async def _run(self):
+        while not self._stop_event.is_set():
+            logging.info('Timer triggered')
+            await self.callback()  # Run callback
+            await asyncio.sleep(self.interval)
 
-# Factory
-def create_timer(difficulty: Difficulty) -> TestTimer:
-    """Создать по сложности."""
-    minutes = settings.difficulty_times.get(difficulty.value, 30)
-    return TestTimer(minutes)
+    def start(self):
+        if self._task is None:
+            self._task = self._loop.create_task(self._run())
+            logging.info('Timer started')
+
+    def stop(self):
+        if self._task:
+            self._stop_event.set()  # Signal to stop the loop
+            self._task.cancel()  # Cancel the task
+            self._task = None
+            logging.info('Timer stopped')
+
+# Example usage of Timer class
+async def example_callback():
+    try:
+        logging.info('Executing callback...')
+        # Your callback logic here...
+    except Exception as e:
+        logging.error(f'Error in callback: {e}')  # Log any errors that occur
+
+if __name__ == '__main__':
+    timer = Timer(5, example_callback)  # A timer that triggers every 5 seconds
+    timer.start()
+    try:
+        asyncio.get_event_loop().run_forever()
+    except KeyboardInterrupt:
+        timer.stop()
+        logging.info('Program terminated by user.')
