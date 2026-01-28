@@ -1,6 +1,7 @@
 """
 Загрузка вопросов из JSON файлов специализаций.
-Выбор случайного подмножества по уровню сложности.
+Фильтр по уровню сложности + fallback.
+Random.sample(count) с user_seed для fairness.
 """
 import json
 import logging
@@ -16,61 +17,65 @@ logger = logging.getLogger(__name__)
 def load_questions_for_specialization(
     specialization: str, 
     difficulty: Difficulty, 
-    seed: int = None
+    user_id: int = None
 ) -> List[Question]:
     """
-    Загружает вопросы для специализации и уровня.
+    Загружает вопросы для специализации/сложности.
+    Фильтр: q.difficulty == target → fallback все.
     """
-    if seed is not None:
-        random.seed(seed)  # Разный порядок для каждого пользователя
-    
-    json_path = settings.questions_dir / f"{specialization}.json"
-    if not json_path.exists():
-        logger.error(f"Вопросы не найдены: {json_path}")
-        return []
+    json_path = settings.work_dir / settings.data_dir / f"{specialization}.json"
     
     try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.error(f"Неверный JSON в {specialization}: {json_path} - {e}")
-        return []
-    except Exception as e:
-        logger.error(f"Ошибка загрузки {specialization}: {e}")
+        with json_path.open("r", encoding="utf-8") as f:
+            raw_data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, PermissionError) as e:
+        logger.error(f"JSON error {specialization}: {e}")
         return []
     
-    # ✅ ПРАВИЛЬНЫЙ цикл с отступами
+    if not isinstance(raw_data, list):
+        logger.error(f"Invalid JSON {specialization}: not list")
+        return []
+    
     questions = []
-    for item in 
+    for idx, item in enumerate(raw_data):
         try:
-            opts = item["options"]
-            correct_str = item["correct_answers"].split(",")
-            correct = {int(x.strip()) for x in correct_str}
+            opts = item.get("options", [])
+            if not isinstance(opts, list) or len(opts) < 3:
+                logger.warning(f"Skip {specialization}:{idx} invalid options")
+                continue
+            
+            correct_str = item.get("correct_answers", "")
+            correct = set(int(x.strip()) for x in correct_str.split(",") if x.strip().isdigit())
             
             q = Question(
                 question=item["question"],
                 options=opts,
                 correct_answers=correct
-                # difficulty=BASIC по умолчанию
+                # difficulty auto=BASIC из models.py
             )
             questions.append(q)
-        except KeyError as e:
-            logger.warning(f"Пропуск вопроса (нет {e}): {item.get('question', 'N/A')}")
-            continue
-        except Exception as e:
-            logger.warning(f"Ошибка парсинга вопроса: {e}")
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Skip вопрос {specialization}:{idx}: {e}")
             continue
     
-    # Выбор нужного количества
-    count = getattr(settings, 'difficulty_questions', {}).get(difficulty.value, 30)
-    if len(questions) < count:
-        logger.warning(f"Недостаточно вопросов {specialization}: {len(questions)} < {count}")
-        count = len(questions)
+    # Фильтр по сложности
+    target_diff = difficulty.value
+    filtered = [q for q in questions if q.difficulty.value == target_diff]
     
-    if not questions:
-        logger.error(f"Нет вопросов для {specialization}")
-        return []
+    # Fallback: если мало/нет → все вопросы
+    if len(filtered) < 5:
+        logger.warning(f"Fallback все вопросы {specialization} (filtered:{len(filtered)})")
+        filtered = questions[:]
     
-    selected = random.sample(questions, count)
-    logger.info(f"Загружено {len(selected)} вопросов для {specialization}:{difficulty.value}")
+    count = settings.difficulty_questions.get(target_diff, 30)
+    if len(filtered) < count:
+        logger.warning(f"Мало вопросов {specialization}: {len(filtered)} < {count}")
+        count = len(filtered)
+    
+    # User-seed random для fairness (не всегда один вопрос)
+    random.seed(user_id or 42)
+    random.shuffle(filtered)
+    selected = filtered[:count]
+    
+    logger.info(f"Загружено {len(selected)}/{count} вопросов {specialization}:{target_diff}")
     return selected
