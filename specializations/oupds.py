@@ -8,11 +8,13 @@ from aiogram.fsm.context import FSMContext
 
 from config.settings import settings
 from library import (
-    TestStates, get_main_keyboard, get_difficulty_keyboard, load_questions_for_specialization,
+    TestStates, get_main_keyboard, get_difficulty_keyboard, get_test_keyboard,
+    load_questions_for_specialization,
     Difficulty, CurrentTestState, TestTimer, UserData, AntiSpamMiddleware,
     show_first_question, handle_answer_toggle, handle_next_question, 
     finish_test, calculate_test_results
 )
+
 from assets.logo import get_logo_text
 
 logger = logging.getLogger(__name__)
@@ -96,33 +98,51 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
 
 @oupds_router.callback_query(F.data.startswith("toggle_"))
 async def toggle_answer(callback: CallbackQuery, state: FSMContext):
+    """✅ Множественный выбор: toggle + клавиатура (варианты с галочками + Далее)."""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if not test_state:
         return await callback.answer("❌ Сессия истекла")
 
+    # ✅ Toggle логика (добавляем/убираем из selected_answers)
     await handle_answer_toggle(callback, test_state)
 
-    next_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➡️ Далее", callback_data="next")]
-    ])
-    await callback.message.edit_reply_markup(reply_markup=next_markup)
-    await callback.answer("Выбрано ✓")
-    logger.info(f"Toggle {user_id}")
+    # ✅ Строим клавиатуру: варианты + галочки + Далее внизу
+    q = test_state.questions[test_state.current_question_idx]
+    markup = get_test_keyboard(q.options, test_state.selected_answers or set())
+    
+    # Добавляем «Далее» отдельной строкой (НЕ заменяем варианты!)
+    markup.inline_keyboard.append([InlineKeyboardButton(text="➡️ Далее", callback_data="next")])
+
+    # ✅ ТОЛЬКО клавиатуру обновляем (вопрос на месте!)
+    await callback.message.edit_reply_markup(reply_markup=markup)
+    await callback.answer("✓ Отмечено" if callback.data.split("_")[1] in test_state.selected_answers else "✗ Снято")
+    logger.info(f"Toggle {user_id}: {sorted(test_state.selected_answers)}")
 
 @oupds_router.callback_query(F.data == "next")
 async def next_question_handler(callback: CallbackQuery, state: FSMContext):
+    """✅ Delete ТОЛЬКО здесь + следующий вопрос."""
     user_id = callback.from_user.id
     test_state = oupds_TEST_STATES.get(user_id)
     if not test_state:
         return await callback.answer("❌ Сессия истекла")
 
-    await callback.message.delete()  # ✅ Только здесь delete
+    # ✅ Сохраняем ответы этого вопроса
+    if test_state.selected_answers:
+        test_state.answers_history.append(test_state.selected_answers.copy())
+    test_state.selected_answers = set()
 
+    # ✅ Удаляем ТЕКУЩИЙ вопрос
+    await callback.message.delete()
+
+    # ✅ FSM данные для user_data
     data = await state.get_data()
-    user_data = UserData(**data, difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC)
-    await handle_next_question(callback, test_state, user_data)  # ✅ + user_data
-    logger.info(f"Next {user_id}")
+    user_data = UserData(**data, difficulty=test_state.questions[0].difficulty)
+
+    # ✅ handle_next_question: следующий или finish
+    await handle_next_question(callback, test_state, user_data)
+    logger.info(f"✅ Next {user_id} (история: {len(test_state.answers_history)})")
+    await callback.answer()
 
 @oupds_router.callback_query(F.data == "finish_test")
 async def finish_test_handler(callback: CallbackQuery, state: FSMContext):
