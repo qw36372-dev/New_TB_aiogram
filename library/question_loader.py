@@ -51,9 +51,10 @@ def load_questions_for_specialization(
         correct = {int(x.strip()) for x in correct_str}
         
         q = Question(
-            question=item["question"],
-            options=opts,
-            correct_answers=correct
+    question=item["question"],
+    options=opts,
+    correct_answers=correct,
+    difficulty=Difficulty(difficulties_map.get(item.get("difficulty", "basic"), "BASIC"))
         )
         questions.append(q)
     
