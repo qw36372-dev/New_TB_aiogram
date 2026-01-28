@@ -41,19 +41,21 @@ def get_difficulty_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 def get_test_keyboard(options: list[str], selected: set[int] | None = None) -> InlineKeyboardMarkup:
-    """Клавиатура теста: динамические опции вопроса + toggle + Далее."""
+    """Toggle: 1️⃣2️⃣3️⃣4️⃣5️⃣✅ номера, 2 колонки, ➡️ всегда."""
     builder = InlineKeyboardBuilder()
     selected = selected or set()
     
-    for i, opt_text in enumerate(options):  # Динамика: реальные тексты из q.options
-        state = "✅" if i in selected else "⬜"
+    for i, opt_text in enumerate(options):  # opt_text только для info
+        num = i + 1  # 1-based
+        state = "✅" if num in selected else ""
+        button_text = f"{state}{num}️⃣ {opt_text[:50]}"  # ✅ Цифры + укороченный текст
         builder.button(
-            text=f"{state} {opt_text}",
-            callback_data=f"toggle_{i}"  # Совместимо с handle_answer_toggle
+            text=button_text,
+            callback_data=f"ans_{num}"
         )
     
     builder.button(text="➡️ Далее", callback_data="next").adjust(1)
-    builder.adjust(2)
+    builder.adjust(2)  # 2 колонки
     return builder.as_markup()
 
 def get_finish_keyboard() -> InlineKeyboardMarkup:
