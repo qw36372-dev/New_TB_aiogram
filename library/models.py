@@ -20,6 +20,7 @@ class Question(BaseModel):
     question: str = Field(..., min_length=1)
     options: List[str] = Field(..., min_items=3, max_items=6)
     correct_answers: Set[int] = Field(..., min_items=1)  # Индексы правильных (1-based)
+    difficulty: Difficulty = Difficulty.BASIC  # ✅ ДОБАВИТЬ ЭТО ПОЛЕ
     
     @validator('correct_answers')
     def validate_correct(cls, v):
