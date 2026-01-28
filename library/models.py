@@ -1,63 +1,43 @@
 """
-Модели данных для вопросов, тестов, пользователей.
-Использует Pydantic для валидации JSON из файлов вопросов.
+Модели для тестов: Pydantic v2, 4 уровня сложности.
+Question: из JSON (difficulty optional → BASIC).
+CurrentTestState: toggle-ответы, таймер, результаты.
 """
-from dataclasses import dataclass, field
 from typing import List, Set, Optional
 from pydantic import BaseModel, Field, validator
-import asyncio
-
-from .enum import Difficulty
-from .timers import TestTimer
-
-class AnswerOption:
-    """Вариант ответа."""
-    text: str
-    index: int  # 1-based для отображения
+from enum import Enum
+from config.settings import Difficulty
 
 class Question(BaseModel):
     """Вопрос из библиотеки."""
-    question: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1, max_length=2000)
     options: List[str] = Field(..., min_items=3, max_items=6)
-    correct_answers: Set[int] = Field(..., min_items=1)  # Индексы правильных (1-based)
-    difficulty: Difficulty = Difficulty.BASIC  # ✅ ДОБАВИТЬ ЭТО ПОЛЕ
-    
+    correct_answers: Set[int] = Field(..., min_items=1, max_items=len(options))
+    difficulty: Difficulty = Difficulty.BASIC  # Default для JSON без поля
+
     @validator('correct_answers')
-    def validate_correct(cls, v):
-        if not v:
-            raise ValueError('Должен быть хотя бы один правильный ответ')
+    def validate_correct(cls, v, values):
+        max_opt = len(values.get('options', []))
+        if any(i < 1 or i > max_opt for i in v):
+            raise ValueError('correct_answers: 1-based индексы 1..N')
         return v
 
-class UserData(BaseModel):
-    """Данные пользователя."""
-    full_name: str
-    position: str
-    department: str
-    specialization: str
-    difficulty: Difficulty
-
-class TestResult(BaseModel):
-    """Результат теста."""
-    user: UserData
-    correct_count: int
-    total_questions: int
-    grade: str
-    percentage: float
-    elapsed_time: str  # "15:51" формат
-
-@dataclass
-class CurrentTestState:
-    """Текущее состояние теста пользователя."""
-    user_id: int
+class CurrentTestState(BaseModel):
+    """Состояние текущего теста."""
     questions: List[Question]
-    timer: Optional[TestTimer] = None
-    answers_history: List[Set[int]] = field(default_factory=list)
-    current_question_idx: int = 0
-    selected_answers: Set[int] = field(default_factory=set)
-    start_time: float = None
-    timer_task: Optional[asyncio.Task] = None
+    current_index: int = 0
+    selected_answers: Set[int] = Field(default_factory=set)
+    start_time: Optional[float] = None
+    timer_task: Optional['asyncio.Task'] = None  # Forward ref
     full_name: str = ""
     position: str = ""
     department: str = ""
     specialization: str = ""
     difficulty: Difficulty = Difficulty.BASIC
+
+    @validator('current_index')
+    def validate_index(cls, v, values):
+        questions = values.get('questions', [])
+        if not questions or v >= len(questions):
+            raise ValueError('current_index валиден для questions')
+        return v
