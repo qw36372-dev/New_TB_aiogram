@@ -1,25 +1,26 @@
 """
 Конфигурация бота: пути, тайминги, токен из окружения.
+Production-ready: Pydantic v2, 4 уровня сложности (русские ключи).
 """
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict
 
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Настройки бота."""
-    api_token: str = os.getenv("API_TOKEN", "")
+    api_token: str = os.getenv("API_TOKEN", "")  # ✅ Твой (Bothost.ru: API_TOKEN)
     
     # Пути к файлам и папкам
-    base_dir: Path = Path(__file__).parent.parent  # Корень проекта
+    base_dir: Path = Path(__file__).parent.parent  # ✅ Относительные пути (лучше для Bothost)
     questions_dir: Path = base_dir / "questions"
     assets_dir: Path = base_dir / "assets"
     data_dir: Path = base_dir / "data"
     logs_dir: Path = base_dir / "logs"
     certs_dir: Path = data_dir / "certificates"
     
-    # Тайминги уровней сложности (в минутах)
+    # Тайминги уровней сложности (в минутах) — 4 уровня ✅
     difficulty_times: Dict[str, int] = {
         "резерв": 35,
         "базовый": 25,
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
         "продвинутый": 20
     }
     
-    # Количество вопросов по уровням
+    # Количество вопросов по уровням — ТВОЙ лучше (30/40/50) ✅
     difficulty_questions: Dict[str, int] = {
         "резерв": 20,
         "базовый": 30,
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
         "продвинутый": 50
     }
     
-    # Пороги оценок (процент правильных)
+    # Пороги оценок (процент правильных) — ТВОЙ ✅
     grades: Dict[str, float] = {
         "неудовлетворительно": 59.0,
         "удовлетворительно": 69.0,
@@ -43,16 +44,19 @@ class Settings(BaseSettings):
         "отлично": 100.0
     }
     
-    # Специализации (11 штук)
+    # Специализации (11 штук) — ТВОЙ ✅
     specializations: list[str] = [
-        "oupds", "ispolniteli",  "aliment", "doznanie", "rozyisk", "prof", "oko", "informatika", "kadry", "bezopasnost", "upravlenie",
+        "oupds", "ispolniteli", "aliment", "doznanie", "rozyisk",
+        "prof", "oko", "informatika", "kadry", "bezopasnost", "upravlenie"
     ]
     
-    # Время показа правильных ответов (секунды)
+    # Время показа правильных ответов (секунды) — ТВОЙ ✅
     answers_show_time: int = 60
     
-    class Config:
-        env_file = ".env"  # Опционально, если локально
+    # Логирование (нужно для library.py logging)
+    log_level: str = "INFO"  # ✅ Добавлено для test_bot_main.py
+    
+    model_config = {"case_sensitive": False}
 
 # Создание служебных папок
 settings = Settings()
