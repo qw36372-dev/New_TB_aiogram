@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random  # ✅ Добавлено для рандомизации
 from typing import Dict
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -74,6 +75,10 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         if not questions:
             return await callback.answer("❌ Вопросы не найдены!")
 
+        # ✅ РАНДОМИЗАЦИЯ: перемешиваем вопросы
+        random.shuffle(questions)
+        questions = questions[:30]  # Берем первые 30 случайных
+
         data = await state.get_data()
         user_data = UserData(**data, difficulty=difficulty)
 
@@ -82,8 +87,12 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await timer.start(timeout_callback)  # ← Аргумент!
 
         test_state = CurrentTestState(
-            user_id=callback.from_user.id, questions=questions, current_question_idx=0,
-            timer=timer, answers_history=[], selected_answers=None
+            user_id=callback.from_user.id, 
+            questions=questions, 
+            current_question_idx=0,
+            timer=timer, 
+            answers_history=[], 
+            selected_answers=None
         )
         oupds_TEST_STATES[callback.from_user.id] = test_state
 
@@ -91,7 +100,7 @@ async def select_difficulty(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("🚀 <b>Тест начат!</b>", parse_mode="HTML")
         await show_first_question(callback.message, test_state)
         await callback.answer()
-        logger.info(f"✅ Тест oupds {callback.from_user.id}")
+        logger.info(f"✅ Тест oupds {callback.from_user.id} (рандом: {questions[0].text[:50]}...)")
     except Exception as e:
         logger.error(f"Difficulty error: {e}")
         await callback.answer("❌ Инициализация")
@@ -135,9 +144,9 @@ async def next_question_handler(callback: CallbackQuery, state: FSMContext):
     # ✅ Удаляем ТЕКУЩИЙ вопрос
     await callback.message.delete()
 
-    # ✅ FSM данные для user_data
+    # ✅ ФИКС: difficulty из test_state (НЕ из questions[0]!)
     data = await state.get_data()
-    user_data = UserData(**data, difficulty=test_state.questions[0].difficulty)
+    user_data = UserData(**data, difficulty=test_state.difficulty if hasattr(test_state, 'difficulty') else Difficulty.BASIC)
 
     # ✅ handle_next_question: следующий или finish
     await handle_next_question(callback, test_state, user_data)
@@ -154,7 +163,11 @@ async def finish_test_handler(callback: CallbackQuery, state: FSMContext):
     try:
         await callback.message.delete()
         data = await state.get_data()
-        user_data = UserData(**data, difficulty=test_state.questions[0].difficulty if test_state.questions else Difficulty.BASIC)
+        # ✅ ФИКС: difficulty из test_state
+        user_data = UserData(
+            **data, 
+            difficulty=test_state.difficulty if hasattr(test_state, 'difficulty') else Difficulty.BASIC
+        )
         results = calculate_test_results(test_state)  # ✅ Вызов
         await finish_test(callback.message, test_state, user_data, results)
         
